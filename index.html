@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Myntra Order Analysis & Matching System</title>
+    <title>Myntra Order Analysis & Packing Slip System</title>
     <!-- XLSX library for parsing Excel/CSV files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- JsBarcode library -->
@@ -11,13 +11,13 @@
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1250px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         h1 { text-align: center; color: #1a252f; margin-bottom: 5px; }
         p.subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: 14px; }
         
         .upload-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
         }
@@ -45,12 +45,23 @@
         .btn-green { background-color: #28a745; }
         .btn-blue { background-color: #17a2b8; }
         
-        .table-responsive { max-height: 500px; overflow-y: auto; margin-top: 15px; border: 1px solid #dee2e6; border-radius: 6px; }
-        .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .data-table th, .data-table td { border: 1px solid #dee2e6; padding: 8px; text-align: left; }
-        .data-table th { background-color: #212529; color: white; position: sticky; top: 0; z-index: 10; }
+        .table-responsive { max-height: 550px; overflow-y: auto; margin-top: 15px; border: 1px solid #dee2e6; border-radius: 6px; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }
+        .data-table th, .data-table td { border: 1px solid #dee2e6; padding: 7px 10px; text-align: left; }
+        .data-table th { background-color: #008080; color: white; position: sticky; top: 0; z-index: 10; font-size: 12px; text-transform: uppercase; }
         .data-table tr:nth-child(even) { background-color: #f8f9fa; }
         
+        .po-header-banner {
+            background-color: #3b82f6;
+            color: white;
+            padding: 10px 15px;
+            font-weight: bold;
+            font-size: 15px;
+            border-radius: 4px 4px 0 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
         .slips-wrapper { margin-top: 30px; }
         .packing-slip { background: #fff; border: 2px solid #222; padding: 20px; margin-bottom: 30px; page-break-after: always; border-radius: 4px; }
         .slip-header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
@@ -72,8 +83,8 @@
 
 <div class="container">
     <div class="no-print">
-        <h1>Myntra PO, Delivery Challan & Sales Order Analysis</h1>
-        <p class="subtitle">Sabhi files ko unke alag upload box me daalein aur Order Select karke Report generate karein</p>
+        <h1>Myntra Order Analysis & Packing Slip Generator</h1>
+        <p class="subtitle">Upload files in their respective boxes below to auto-map PO, Delivery Challan & Sales Reports</p>
 
         <!-- Separate Upload Boxes -->
         <div class="upload-grid">
@@ -117,7 +128,7 @@
                 </div>
                 <div>
                     <strong>🔎 Search in Selected Order Data:</strong>
-                    <input type="text" id="searchInput" class="search-box" placeholder="Search Barcode, SKU, Style ID..." onkeyup="filterOrders()">
+                    <input type="text" id="searchInput" class="search-box" placeholder="Search SKU Code, Barcode, Style ID..." onkeyup="filterOrders()">
                 </div>
             </div>
             
@@ -137,6 +148,7 @@
     let datasets = {
         sales: [],
         po: [],
+        poBarCode: '',
         challan: [],
         saleItem: []
     };
@@ -150,6 +162,39 @@
         return str.replace(/^0+/, '');
     }
 
+    function parsePOFile(worksheet) {
+        let rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+        let poBarcode = '';
+        let headerIdx = -1;
+
+        for (let i = 0; i < rawJson.length; i++) {
+            let rowStr = rawJson[i].map(c => String(c)).join(' ');
+            if (rowStr.includes('PO Barcode')) {
+                poBarcode = String(rawJson[i][1] || rawJson[i][2] || '').trim();
+            }
+            if (rowStr.includes('SKU Id') && rowStr.includes('Style Id')) {
+                headerIdx = i;
+            }
+        }
+
+        datasets.poBarCode = poBarcode || 'MYNJ-SAPL210826-4';
+
+        if (headerIdx === -1) return [];
+
+        let headers = rawJson[headerIdx].map(h => String(h).trim());
+        let result = [];
+        for (let i = headerIdx + 1; i < rawJson.length; i++) {
+            let row = rawJson[i];
+            if (!row || row.length === 0) continue;
+            let obj = {};
+            headers.forEach((h, colIdx) => {
+                if (h) obj[h] = row[colIdx] !== undefined ? row[colIdx] : "";
+            });
+            result.push(obj);
+        }
+        return result;
+    }
+
     function parseSheetSmartly(worksheet) {
         let rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
         if (rawJson.length === 0) return [];
@@ -157,7 +202,7 @@
         let headerIdx = 0;
         for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
             let rowStr = rawJson[i].map(c => String(c)).join(' ');
-            if (rowStr.includes('SKU Code') || rowStr.includes('BARCODE') || rowStr.includes('GTIN') || rowStr.includes('Order No') || rowStr.includes('REMARKS') || rowStr.includes('INVOICE_NO')) {
+            if (rowStr.includes('BARCODE') || rowStr.includes('Order No') || rowStr.includes('REMARKS') || rowStr.includes('INVOICE_NO')) {
                 headerIdx = i;
                 break;
             }
@@ -187,22 +232,19 @@
         reader.onload = function(evt) {
             const data = new Uint8Array(evt.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
-            
-            let allRows = [];
-            workbook.SheetNames.forEach(sheetName => {
-                const worksheet = workbook.Sheets[sheetName];
-                const rows = parseSheetSmartly(worksheet);
-                allRows = allRows.concat(rows);
-            });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
 
-            datasets[type] = allRows;
+            if (type === 'po') {
+                datasets.po = parsePOFile(firstSheet);
+            } else {
+                datasets[type] = parseSheetSmartly(firstSheet);
+            }
             processAllData();
         };
         reader.readAsArrayBuffer(file);
     }
 
     function processAllData() {
-        // Populating Order Select Dropdown from Sales Order Report
         let orderSelect = document.getElementById('orderSelect');
         let orderMap = {};
 
@@ -222,108 +264,104 @@
 
         document.getElementById('controlsArea').style.display = 'block';
 
-        // Auto Select first order if available
         if (Object.keys(orderMap).length > 0) {
             orderSelect.selectedIndex = 1;
+            onOrderSelected();
+        } else if (datasets.challan.length > 0 || datasets.po.length > 0) {
             onOrderSelected();
         }
     }
 
     function onOrderSelected() {
         let selectedOrder = document.getElementById('orderSelect').value;
-        if (!selectedOrder && datasets.sales.length > 0) return;
-
-        let poMap = {};
-        // Index PO Data by Barcode / SKU
+        
+        // PO File Lookup Map (SKU Code / Barcode => SKU Id, Style Id, SKU Code)
+        let poLookup = {};
         datasets.po.forEach(row => {
-            let barcode = cleanKey(row.GTIN || row.BARCODE || row.Barcode || row.EAN);
-            let skuCode = cleanKey(row['SKU Code'] || row['SKU Id']);
-            let key = barcode || skuCode;
-            if (key) {
-                poMap[key] = {
-                    poNum: row['PO NO'] || row['PO Number'] || 'MYNJ-SAPL210826-4',
-                    skuId: row['SKU Id'] || '-',
-                    styleId: row['Style Id'] || '-',
-                    skuCode: row['SKU Code'] || '-',
-                    articleName: row['Vendor Article Name'] || row['Item Name'] || '-',
-                    landingPrice: parseFloat(row['Landing Price'] || row.Rate || row.MRP || 0)
-                };
-            }
+            let skuCode = cleanKey(row['SKU Code']);
+            let gtin = cleanKey(row['GTIN'] || row['BARCODE']);
+            let skuId = row['SKU Id'] || '-';
+            let styleId = row['Style Id'] || '-';
+            
+            let obj = { skuCode: row['SKU Code'] || '-', styleId: styleId, skuId: skuId };
+            if (skuCode) poLookup[skuCode] = obj;
+            if (gtin) poLookup[gtin] = obj;
         });
 
-        // Index Delivery Challan Box Count by Barcode / SKU / Article
-        let challanBoxMap = {};
-        datasets.challan.forEach(row => {
-            let barcode = cleanKey(row.BARCODE || row.Barcode);
-            let boxNo = row.REMARKS || row.Remarks || row.BoxNo || row['box num'] || '-';
-            if (typeof boxNo === 'string' && boxNo.match(/\d+/)) {
-                boxNo = boxNo.match(/\d+/)[0];
-            }
-            if (barcode) {
-                challanBoxMap[barcode] = boxNo;
-            }
-        });
-
-        // Filter Sales Data for selected order
-        let mergedList = [];
-        let filterSales = datasets.sales.filter(r => (r['Order No'] || r['ORDER_NO'] || r['DOC No']) === selectedOrder);
-
-        // If Sales file not uploaded, use PO file rows directly
-        let sourceRows = filterSales.length > 0 ? filterSales : datasets.po;
+        let finalRows = [];
+        let sourceRows = datasets.challan.length > 0 ? datasets.challan : datasets.po;
 
         sourceRows.forEach(row => {
-            let barcode = cleanKey(row.BARCODE || row.Barcode || row.GTIN || row.EAN);
-            let skuCode = cleanKey(row['SKU Code'] || row['ITEM CODE']);
-            let lookupKey = barcode || skuCode;
+            // Delivery Challan Mapping Rules
+            let size = row['SIZE'] || row['Size'] || '-';
+            let itemCode = row['ITEM_NAME'] || row['ITEM CODE'] || row['Item Code'] || '-'; // ITEM CODE gets ITEM_NAME
+            let itemDepartment = row['DEPARTMENT'] || row['Department'] || row['ITEAM NAME'] || '-'; // ITEAM NAME gets DEPARTMENT
+            let color = row['COLOR'] || row['Color'] || row['Colour'] || '-';
+            let eanCode = row['BARCODE'] || row['Barcode'] || row['GTIN'] || row['Ean code'] || '-';
+            let qty = parseFloat(row['CHALLAN_QUANTITY'] || row['QTY'] || row['Quantity'] || 1);
+            let mrp = parseFloat(row['MRP'] || row['Mrp'] || 0);
+            
+            // RATE = MRP / QTY
+            let rate = (qty > 0 && mrp > 0) ? (mrp / qty).toFixed(2) : 0;
+            let boxNum = row['REMARKS'] || row['Remarks'] || row['box nu'] || row['Box No'] || '-';
 
-            let poData = poMap[lookupKey] || {
-                poNum: row['PARTY ORDER NO'] || row['PO NO'] || selectedOrder || 'MYNJ-SAPL210826-4',
-                skuId: row['SKU Id'] || '-',
+            // PO Matching for SKU Code, Style Id, SKU Id
+            let cleanEan = cleanKey(eanCode);
+            let poInfo = poLookup[cleanEan] || {
+                skuCode: row['SKU Code'] || '-',
                 styleId: row['Style Id'] || '-',
-                skuCode: row['SKU Code'] || skuCode || '-',
-                articleName: row['Vendor Article Name'] || row['Item Name'] || row['ITEM_NAME'] || '-',
-                landingPrice: parseFloat(row['Landing Price'] || row.MRP || 0)
+                skuId: row['SKU Id'] || '-'
             };
 
-            let reservedQty = parseFloat(row['Reserved Qty'] || row['Order Qty'] || row.Quantity || row.SALE_QTY || 1);
-            let boxNo = challanBoxMap[barcode] || row.REMARKS || row.Remarks || '-';
-
-            mergedList.push({
-                OrderNo: selectedOrder || poData.poNum,
-                PONumber: poData.poNum,
-                Barcode: barcode || row.BARCODE || '-',
-                SKUId: poData.skuId,
-                StyleId: poData.styleId,
-                SKUCode: poData.skuCode,
-                ArticleName: poData.articleName,
-                LandingPrice: poData.landingPrice ? Number(poData.landingPrice.toFixed(2)) : 0,
-                ReservedQty: reservedQty,
-                BoxNo: boxNo
+            finalRows.push({
+                poNumber: datasets.poBarCode || selectedOrder || 'MYNJ-SAPL210826-4',
+                skuCode: poInfo.skuCode,
+                styleId: poInfo.styleId,
+                skuId: poInfo.skuId,
+                size: size,
+                itemCode: itemCode,
+                itemName: itemDepartment, // DEPARTMENT data
+                color: color,
+                eanCode: eanCode,
+                qty: qty,
+                mrp: mrp,
+                rate: rate,
+                boxNum: boxNum
             });
         });
 
-        globalMergedData = mergedList;
-        currentDisplayedData = mergedList;
+        globalMergedData = finalRows;
+        currentDisplayedData = finalRows;
 
-        renderSummaryTable(mergedList);
-        generateSlips(mergedList);
+        renderSummaryTable(finalRows);
+        generateSlips(finalRows);
     }
 
     function renderSummaryTable(data) {
+        let poDisplay = datasets.poBarCode || 'MYNJ-SAPL210826-4';
+        let totalQty = data.reduce((sum, item) => sum + item.qty, 0);
+
         let html = `
+            <div class="po-header-banner">
+                <span>po: ${poDisplay}</span>
+                <span>G.TOTAL QTY: ${totalQty}</span>
+            </div>
             <table class="data-table">
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>PO Number</th>
-                        <th>BARCODE</th>
-                        <th>SKU Id</th>
-                        <th>Style Id</th>
                         <th>SKU Code</th>
-                        <th>Article / Item Name</th>
-                        <th>Landing Price (₹)</th>
-                        <th>Reserved Qty</th>
-                        <th>Box No (Remarks)</th>
+                        <th>Style Id</th>
+                        <th>SKU Id</th>
+                        <th>SIZE</th>
+                        <th>ITEM CODE</th>
+                        <th>ITEAM NAME</th>
+                        <th>color</th>
+                        <th>Ean code</th>
+                        <th>QTY</th>
+                        <th>MRP</th>
+                        <th>RATE</th>
+                        <th>box nu</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -333,15 +371,18 @@
             html += `
                 <tr>
                     <td>${idx + 1}</td>
-                    <td><strong>${item.PONumber || '-'}</strong></td>
-                    <td>${item.Barcode || '-'}</td>
-                    <td>${item.SKUId || '-'}</td>
-                    <td>${item.StyleId || '-'}</td>
-                    <td>${item.SKUCode || '-'}</td>
-                    <td>${item.ArticleName || '-'}</td>
-                    <td>${item.LandingPrice || 0}</td>
-                    <td><strong>${item.ReservedQty || 0}</strong></td>
-                    <td>${item.BoxNo || '-'}</td>
+                    <td><strong>${item.skuCode}</strong></td>
+                    <td>${item.styleId}</td>
+                    <td>${item.skuId}</td>
+                    <td>${item.size}</td>
+                    <td>${item.itemCode}</td>
+                    <td>${item.itemName}</td>
+                    <td>${item.color}</td>
+                    <td>${item.eanCode}</td>
+                    <td><strong>${item.qty}</strong></td>
+                    <td>${item.mrp}</td>
+                    <td>${item.rate}</td>
+                    <td><strong>${item.boxNum}</strong></td>
                 </tr>
             `;
         });
@@ -353,12 +394,12 @@
     function filterOrders() {
         const query = document.getElementById('searchInput').value.toLowerCase().trim();
         const filtered = globalMergedData.filter(item => {
-            return String(item.PONumber).toLowerCase().includes(query) ||
-                   String(item.Barcode).toLowerCase().includes(query) ||
-                   String(item.SKUId).toLowerCase().includes(query) ||
-                   String(item.StyleId).toLowerCase().includes(query) ||
-                   String(item.SKUCode).toLowerCase().includes(query) ||
-                   String(item.ArticleName).toLowerCase().includes(query);
+            return String(item.skuCode).toLowerCase().includes(query) ||
+                   String(item.styleId).toLowerCase().includes(query) ||
+                   String(item.skuId).toLowerCase().includes(query) ||
+                   String(item.itemCode).toLowerCase().includes(query) ||
+                   String(item.eanCode).toLowerCase().includes(query) ||
+                   String(item.boxNum).toLowerCase().includes(query);
         });
 
         currentDisplayedData = filtered;
@@ -374,15 +415,15 @@
 
         const grouped = {};
         data.forEach(row => {
-            const key = row.PONumber || 'PO-MAIN';
+            const key = row.boxNum || '1';
             if (!grouped[key]) grouped[key] = [];
             grouped[key].push(row);
         });
 
         let idx = 0;
-        for (let poNum in grouped) {
+        for (let boxNo in grouped) {
             idx++;
-            const items = grouped[poNum];
+            const items = grouped[boxNo];
             const first = items[0];
             const barcodeId = "barcode-" + idx;
 
@@ -392,8 +433,8 @@
                         <div>
                             <div class="slip-title">Packing Slip</div>
                             <div style="font-size:13px; margin-top:5px;">
-                                <strong>PO / Order No:</strong> ${poNum} | 
-                                <strong>Box No:</strong> ${first.BoxNo}
+                                <strong>PO No:</strong> ${first.poNumber} | 
+                                <strong>Box No:</strong> ${boxNo}
                             </div>
                         </div>
                         <div class="barcode-container">
@@ -404,23 +445,23 @@
                     <table class="items-table">
                         <thead>
                             <tr>
-                                <th style="width: 6%;">#</th>
-                                <th style="width: 18%;">SKU Code</th>
-                                <th style="width: 16%;">SKU Id / Style Id</th>
-                                <th style="width: 32%;">Vendor Article Name</th>
-                                <th style="width: 16%;">Barcode</th>
-                                <th style="width: 12%; text-align: center;">Reserved Qty</th>
+                                <th>#</th>
+                                <th>SKU Code</th>
+                                <th>Style Id / SKU Id</th>
+                                <th>ITEM CODE / Name</th>
+                                <th>EAN Code</th>
+                                <th style="text-align: center;">QTY</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${items.map((item, i) => `
                                 <tr>
                                     <td>${i + 1}</td>
-                                    <td>${item.SKUCode}</td>
-                                    <td>${item.SKUId} / ${item.StyleId}</td>
-                                    <td>${item.ArticleName}</td>
-                                    <td>${item.Barcode}</td>
-                                    <td style="text-align: center; font-weight:bold;">${item.ReservedQty}</td>
+                                    <td>${item.skuCode}</td>
+                                    <td>${item.styleId} / ${item.skuId}</td>
+                                    <td>${item.itemCode} (${item.itemName})</td>
+                                    <td>${item.eanCode}</td>
+                                    <td style="text-align: center; font-weight:bold;">${item.qty}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -430,7 +471,7 @@
 
             container.insertAdjacentHTML('beforeend', slipHtml);
 
-            JsBarcode("#" + barcodeId, String(poNum), {
+            JsBarcode("#" + barcodeId, String(first.poNumber), {
                 format: "CODE128",
                 width: 1.5,
                 height: 40,
@@ -444,8 +485,8 @@
         if (currentDisplayedData.length === 0) return;
         const worksheet = XLSX.utils.json_to_sheet(currentDisplayedData);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Order Report");
-        XLSX.writeFile(workbook, "Order_Matched_Report.xlsx");
+        XLSX.utils.book_append_sheet(workbook, worksheet, "PO Matched Report");
+        XLSX.writeFile(workbook, "PO_Matched_Report.xlsx");
     }
 </script>
 
