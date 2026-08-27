@@ -3,64 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-File Order Data Matching & Analysis System</title>
-    <!-- XLSX library for parsing and exporting Excel/CSV files -->
+    <title>Multi-File Order Matching & Analysis</title>
+    <!-- XLSX library for parsing Excel/CSV files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- JsBarcode library for barcode rendering -->
+    <!-- JsBarcode library -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
-        * {
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: #eef2f5;
-            margin: 0;
-            padding: 20px;
-            color: #333;
-        }
-
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            background: #ffffff;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        }
-
-        h1 {
-            text-align: center;
-            color: #1a252f;
-            margin-bottom: 5px;
-        }
-
-        p.subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 25px;
-            font-size: 14px;
-        }
-
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #eef2f5; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1100px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1 { text-align: center; color: #1a252f; margin-bottom: 5px; }
+        p.subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: 14px; }
+        
         .upload-section {
             border: 2px dashed #007bff;
             background-color: #f8f9fa;
-            padding: 25px;
+            padding: 35px 25px;
             text-align: center;
             border-radius: 8px;
             margin-bottom: 20px;
+            cursor: pointer;
             transition: 0.3s;
         }
-
-        .upload-section:hover {
-            background-color: #e9ecef;
-        }
-
-        input[type="file"] {
-            display: none;
-        }
-
+        .upload-section:hover, .upload-section.dragover { background-color: #e9ecef; border-color: #0056b3; }
+        input[type="file"] { display: none; }
+        
         .custom-file-upload {
             display: inline-block;
             padding: 12px 24px;
@@ -70,145 +37,30 @@
             border-radius: 5px;
             font-weight: bold;
             font-size: 15px;
-            transition: 0.2s;
         }
-
-        .custom-file-upload:hover {
-            background-color: #0056b3;
-        }
-
-        .btn-action {
-            display: inline-block;
-            margin: 5px;
-            padding: 10px 18px;
-            color: white;
-            border-radius: 5px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            border: none;
-        }
-
+        
+        .btn-action { display: inline-block; margin: 5px; padding: 10px 18px; color: white; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer; border: none; }
         .btn-green { background-color: #28a745; }
-        .btn-green:hover { background-color: #218838; }
-
         .btn-blue { background-color: #17a2b8; }
-        .btn-blue:hover { background-color: #117a8b; }
-
         .btn-secondary { background-color: #6c757d; }
-        .btn-secondary:hover { background-color: #5a6268; }
 
-        .controls-area {
-            display: none;
-            margin-top: 20px;
-            margin-bottom: 20px;
-            background: #f1f3f5;
-            padding: 15px;
-            border-radius: 6px;
-        }
-
-        .search-box {
-            width: 100%;
-            padding: 10px 15px;
-            font-size: 15px;
-            border: 1px solid #ced4da;
-            border-radius: 5px;
-            margin-top: 8px;
-        }
-
-        #file-list {
-            margin-top: 15px;
-            font-size: 14px;
-            color: #28a745;
-            text-align: left;
-        }
-
-        /* Data Display Table */
-        .table-responsive {
-            max-height: 400px;
-            overflow-y: auto;
-            margin-top: 15px;
-            border: 1px solid #dee2e6;
-        }
-
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 13px;
-        }
-
-        .data-table th, .data-table td {
-            border: 1px solid #dee2e6;
-            padding: 8px;
-            text-align: left;
-        }
-
-        .data-table th {
-            background-color: #343a40;
-            color: white;
-            position: sticky;
-            top: 0;
-        }
-
+        .controls-area { display: none; margin-top: 20px; background: #f1f3f5; padding: 15px; border-radius: 6px; }
+        .search-box { width: 100%; padding: 10px 15px; font-size: 15px; border: 1px solid #ced4da; border-radius: 5px; margin-top: 8px; }
+        #file-list { margin-top: 15px; font-size: 14px; color: #28a745; text-align: left; }
+        
+        .table-responsive { max-height: 450px; overflow-y: auto; margin-top: 15px; border: 1px solid #dee2e6; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .data-table th, .data-table td { border: 1px solid #dee2e6; padding: 8px; text-align: left; }
+        .data-table th { background-color: #343a40; color: white; position: sticky; top: 0; }
         .data-table tr:nth-child(even) { background-color: #f8f9fa; }
-
-        /* Packing Slip Styling */
-        .slips-wrapper {
-            margin-top: 30px;
-        }
-
-        .packing-slip {
-            background: #fff;
-            border: 2px solid #222;
-            padding: 20px;
-            margin-bottom: 30px;
-            page-break-after: always;
-            border-radius: 4px;
-        }
-
-        .slip-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-        }
-
-        .slip-title {
-            font-size: 22px;
-            font-weight: bold;
-            text-transform: uppercase;
-            margin: 0 0 8px 0;
-        }
-
-        .meta-info {
-            font-size: 13px;
-            line-height: 1.5;
-        }
-
-        .barcode-container {
-            text-align: right;
-        }
-
-        .barcode-container svg {
-            max-width: 220px;
-            height: 50px;
-        }
-
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-
-        .items-table th, .items-table td {
-            border: 1px solid #333;
-            padding: 8px;
-            text-align: left;
-            font-size: 13px;
-        }
-
+        
+        .slips-wrapper { margin-top: 30px; }
+        .packing-slip { background: #fff; border: 2px solid #222; padding: 20px; margin-bottom: 30px; page-break-after: always; border-radius: 4px; }
+        .slip-header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
+        .slip-title { font-size: 20px; font-weight: bold; text-transform: uppercase; }
+        .barcode-container svg { max-width: 220px; height: 45px; }
+        .items-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        .items-table th, .items-table td { border: 1px solid #333; padding: 8px; text-align: left; font-size: 13px; }
         .items-table th { background-color: #f0f0f0; }
 
         @media print {
@@ -224,67 +76,87 @@
 <div class="container">
     <div class="no-print">
         <h1>Multi-File Order Matching & Analysis</h1>
-        <p class="subtitle">Ek sath Multiple Excel/CSV files (PO, Sale Report, Challan) upload karke Order Data matching aur pull karein</p>
+        <p class="subtitle">Excel/CSV Files (PO, Sale Report, Challan) upload karke Order Data matching & analysis karein</p>
 
-        <div class="upload-section">
-            <label for="excelFiles" class="custom-file-upload">
+        <div class="upload-section" id="dropZone" onclick="document.getElementById('excelFiles').click()">
+            <label class="custom-file-upload">
                 📁 Upload Multiple Files (PO, Sale, Challan)
             </label>
-            <input type="file" id="excelFiles" accept=".xlsx, .xls, .csv" multiple onchange="handleFilesUpload(event)">
-            <button class="btn-action btn-secondary" onclick="downloadSampleData()">📥 Download Sample CSV</button>
+            <p style="margin-top: 10px; color: #777; font-size: 13px;">(Aap ek saath multiple files select kar sakte hain ya drag-and-drop karein)</p>
+            <input type="file" id="excelFiles" accept=".xlsx, .xls, .csv" multiple onchange="handleFilesUpload(event.target.files)">
             <div id="file-list"></div>
         </div>
 
         <div id="controlsArea" class="controls-area">
             <div>
-                <strong>🔎 Filter / Search Any Order:</strong>
-                <input type="text" id="searchInput" class="search-box" placeholder="Type Order ID, Invoice Number, Barcode, or SKU Code..." onkeyup="filterOrders()">
+                <strong>🔎 Search / Filter Order Data:</strong>
+                <input type="text" id="searchInput" class="search-box" placeholder="Type Order ID, Invoice Number, Barcode, or SKU..." onkeyup="filterOrders()">
             </div>
             <div style="margin-top: 15px;">
-                <button class="btn-action btn-green" onclick="exportMergedExcel()">📊 Download Merged Excel Data</button>
-                <button class="btn-action btn-blue" onclick="window.print()">🖨️ Print Matching Slips</button>
+                <button class="btn-action btn-green" onclick="exportMergedExcel()">📊 Export Matched Excel Data</button>
+                <button class="btn-action btn-blue" onclick="window.print()">🖨️ Print Packing Slips</button>
             </div>
         </div>
 
         <div id="summaryTableContainer" class="table-responsive"></div>
     </div>
 
-    <!-- Output Area where slips are dynamically generated -->
     <div id="slipsContainer" class="slips-wrapper"></div>
 </div>
 
 <script>
     let globalMergedData = [];
 
-    // Helper: Normalize String for clean Barcode / Order matching
+    // Setup Drag and Drop
+    const dropZone = document.getElementById('dropZone');
+    ['dragenter', 'dragover'].forEach(name => {
+        dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.classList.add('dragover'); }, false);
+    });
+    ['dragleave', 'drop'].forEach(name => {
+        dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); }, false);
+    });
+    dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (dt.files && dt.files.length > 0) handleFilesUpload(dt.files);
+    });
+
     function cleanKey(val) {
         if (!val) return '';
         let str = String(val).trim().replace(/\.0$/, '');
-        return str.replace(/^0+/, ''); // remove leading zeros
+        return str.replace(/^0+/, '');
     }
 
-    // Download Sample Data Template
-    function downloadSampleData() {
-        const csvContent = "data:text/csv;charset=utf-8," 
-            + "OrderID,InvoiceNo,Barcode,SKU,ItemName,Qty,Rate,BoxNo\n"
-            + "MYNJ-101,INV-2026-001,8903421360369,LINOBAPK40436330,BACK PACK BLACK,20,1764.36,1\n"
-            + "MYNJ-102,INV-2026-002,8903421003686,LINOBAPK116050615,TRAVEL BAG NAVY,10,2081.77,2";
-        
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "sample_order_data.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+    function parseSheetSmartly(worksheet) {
+        let rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+        if (rawJson.length === 0) return [];
+
+        let headerIdx = 0;
+        for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
+            let rowStr = rawJson[i].map(c => String(c)).join(' ');
+            if (rowStr.includes('SKU Code') || rowStr.includes('GTIN') || rowStr.includes('Barcode') || rowStr.includes('INVOICE_NO')) {
+                headerIdx = i;
+                break;
+            }
+        }
+
+        let headers = rawJson[headerIdx].map(h => String(h).trim());
+        let result = [];
+        for (let i = headerIdx + 1; i < rawJson.length; i++) {
+            let row = rawJson[i];
+            if (!row || row.length === 0) continue;
+            let obj = {};
+            headers.forEach((h, colIdx) => {
+                if (h) obj[h] = row[colIdx] !== undefined ? row[colIdx] : "";
+            });
+            result.push(obj);
+        }
+        return result;
     }
 
-    // Process Multiple Uploaded Files
-    function handleFilesUpload(e) {
-        const files = e.target.files;
+    function handleFilesUpload(files) {
         if (!files || files.length === 0) return;
 
-        let fileListHtml = "<strong>Uploaded Files:</strong><ul>";
+        let fileListHtml = "<strong>Uploaded Files:</strong><ul style='margin-top:5px;'>";
         for (let f of files) {
             fileListHtml += `<li>📄 ${f.name}</li>`;
         }
@@ -304,7 +176,7 @@
                     let allRows = [];
                     workbook.SheetNames.forEach(sheetName => {
                         const worksheet = workbook.Sheets[sheetName];
-                        const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+                        const rows = parseSheetSmartly(worksheet);
                         allRows = allRows.concat(rows);
                     });
 
@@ -320,25 +192,29 @@
         });
     }
 
-    // Auto-Analyze and Match Data Across Uploaded Files
     function mergeAndAnalyzeData(datasets) {
         let masterMap = {};
         globalMergedData = [];
 
         datasets.forEach(ds => {
             ds.rows.forEach(row => {
-                // Determine Barcode / EAN key
                 let rawEan = row.Barcode || row.BARCODE || row.GTIN || row['Ean code'] || row.EAN || '';
                 let eanKey = cleanKey(rawEan);
 
-                // Determine Order ID or Invoice Number
-                let orderId = row.OrderID || row['PARTY ORDER NO'] || row['Sale Order No'] || row.po || row.INVOICE_NO || 'ORD-GENERIC';
+                let orderId = row.OrderID || row['PARTY ORDER NO'] || row['Sale Order No'] || row.po || row.INVOICE_NO || 'MYNJ-ORDER';
                 let invNo = row.InvoiceNo || row.INVOICE_NO || row.CHALLAN_NO || '-';
-                let sku = row.SKU || row['SKU Code'] || row['ITEM CODE'] || row['Item Name'] || '-';
-                let itemName = row.ItemName || row['ITEAM NAME'] || row['ITEM_NAME'] || row['Vendor Article Name'] || 'Item Product';
+                let sku = row.SKU || row['SKU Code'] || row['ITEM CODE'] || row['Item Name'] || row['Vendor Article Number'] || '-';
+                let itemName = row.ItemName || row['ITEAM NAME'] || row['ITEM_NAME'] || row['Vendor Article Name'] || 'Item';
                 let qty = parseFloat(row.Qty || row.SALE_QTY || row.CHALLAN_QUANTITY || row.Quantity || 1);
-                let rate = parseFloat(row.Rate || row.RATE || row.Landing Price || row.MRP || 0);
+                
+                let grossAmt = parseFloat(row['GROSS AMOUNT'] || 0);
+                let rate = parseFloat(row.Rate || row.RATE || row['Landing Price'] || row.MRP || row.Mrp || 0);
+                if (grossAmt > 0 && qty > 0) rate = (grossAmt / qty);
+
                 let boxNo = row.BoxNo || row['box num'] || row.REMARKS || 1;
+                if (typeof boxNo === 'string' && boxNo.match(/\d+/)) {
+                    boxNo = boxNo.match(/\d+/)[0];
+                }
 
                 let lookupKey = eanKey ? eanKey : (orderId + "_" + sku);
 
@@ -350,13 +226,12 @@
                         ItemName: itemName,
                         Barcode: rawEan || eanKey,
                         Qty: qty,
-                        Rate: rate,
+                        Rate: rate ? Number(rate.toFixed(3)) : 0,
                         BoxNo: boxNo
                     };
                 } else {
-                    // Update/Merge details if found in another file (e.g. Rate or Box info lookup)
                     if (invNo !== '-') masterMap[lookupKey].InvoiceNo = invNo;
-                    if (rate > 0) masterMap[lookupKey].Rate = rate;
+                    if (rate > 0) masterMap[lookupKey].Rate = Number(rate.toFixed(3));
                     if (boxNo !== 1) masterMap[lookupKey].BoxNo = boxNo;
                     if (qty > masterMap[lookupKey].Qty) masterMap[lookupKey].Qty = qty;
                 }
@@ -366,7 +241,7 @@
         globalMergedData = Object.values(masterMap);
 
         if (globalMergedData.length === 0) {
-            alert('Uploaded files me koi matching row/data nahi mila!');
+            alert('Data process nahi ho saka. Kripya check karein ki sahi Excel files upload hui hain.');
             return;
         }
 
@@ -375,20 +250,19 @@
         generateSlips(globalMergedData);
     }
 
-    // Render Scannable Data Table
     function renderSummaryTable(data) {
         let html = `
             <table class="data-table">
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Order ID</th>
+                        <th>Order / PO ID</th>
                         <th>Invoice No</th>
                         <th>SKU Code</th>
                         <th>Item Name</th>
                         <th>Barcode / EAN</th>
                         <th>Qty</th>
-                        <th>Rate</th>
+                        <th>Rate (₹)</th>
                         <th>Box No</th>
                     </tr>
                 </thead>
@@ -415,7 +289,6 @@
         document.getElementById('summaryTableContainer').innerHTML = html;
     }
 
-    // Instant Filter function for Search input
     function filterOrders() {
         const query = document.getElementById('searchInput').value.toLowerCase().trim();
         const filtered = globalMergedData.filter(item => {
@@ -430,7 +303,6 @@
         generateSlips(filtered);
     }
 
-    // Generate Printable Packing Slips
     function generateSlips(data) {
         const container = document.getElementById('slipsContainer');
         container.innerHTML = '';
@@ -454,10 +326,10 @@
                     <div class="slip-header">
                         <div>
                             <div class="slip-title">Packing Slip</div>
-                            <div class="meta-info">
-                                <strong>Order ID:</strong> ${orderId}<br>
-                                <strong>Invoice No:</strong> ${first.InvoiceNo}<br>
-                                <strong>Box No:</strong> ${first.BoxNo}
+                            <div style="font-size:13px; margin-top:5px;">
+                                <strong>Order/PO:</strong> ${orderId} | 
+                                <strong>Invoice:</strong> ${first.InvoiceNo} | 
+                                <strong>Box:</strong> ${first.BoxNo}
                             </div>
                         </div>
                         <div class="barcode-container">
@@ -502,18 +374,12 @@
         }
     }
 
-    // Export Processed & Matched Data to Excel
     function exportMergedExcel() {
-        if (globalMergedData.length === 0) {
-            alert("No data available to export!");
-            return;
-        }
-
+        if (globalMergedData.length === 0) return;
         const worksheet = XLSX.utils.json_to_sheet(globalMergedData);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Merged Order Data");
-
-        XLSX.writeFile(workbook, "Matched_Orders_Summary.xlsx");
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Matched Data");
+        XLSX.writeFile(workbook, "Matched_Order_Report.xlsx");
     }
 </script>
 
