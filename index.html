@@ -3,11 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Myntra Order Analysis & Packing Slip System</title>
-    <!-- XLSX library for parsing Excel/CSV files -->
+    <title>Myntra Order Analysis & Styled Excel Generator</title>
+    <!-- XLSX for Reading Files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- ExcelJS & FileSaver for Exporting Exact Styled Excel Files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <!-- JsBarcode library -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
@@ -33,34 +37,27 @@
         }
         .upload-card:hover { background-color: #e9ecef; border-color: #0056b3; }
         .upload-card h4 { margin: 0 0 8px 0; color: #007bff; font-size: 14px; }
-        .upload-card p { margin: 5px 0 0 0; font-size: 12px; color: #28a745; word-break: break-all; }
+        .upload-card p { margin: 5px 0 0 0; font-size: 12px; color: #28a745; word-break: break-all; font-weight: bold; }
         input[type="file"] { display: none; }
 
         .controls-area { display: none; margin-top: 20px; background: #eef2f7; padding: 18px; border-radius: 8px; border: 1px solid #cbd5e1; }
-        .select-box, .search-box { width: 100%; padding: 10px 12px; font-size: 14px; border: 1px solid #ced4da; border-radius: 5px; margin-top: 6px; }
+        .select-box, .search-box, .text-input { width: 100%; padding: 10px 12px; font-size: 14px; border: 1px solid #ced4da; border-radius: 5px; margin-top: 6px; }
+        .filter-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px; }
         
-        .filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
-        
-        .btn-action { display: inline-block; margin: 5px 5px 0 0; padding: 10px 18px; color: white; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer; border: none; }
+        .btn-action { display: inline-block; margin: 10px 5px 0 0; padding: 10px 18px; color: white; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer; border: none; }
         .btn-green { background-color: #28a745; }
         .btn-blue { background-color: #17a2b8; }
         
-        .table-responsive { max-height: 550px; overflow-y: auto; margin-top: 15px; border: 1px solid #dee2e6; border-radius: 6px; }
-        .data-table { width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }
-        .data-table th, .data-table td { border: 1px solid #dee2e6; padding: 7px 10px; text-align: left; }
-        .data-table th { background-color: #008080; color: white; position: sticky; top: 0; z-index: 10; font-size: 12px; text-transform: uppercase; }
-        .data-table tr:nth-child(even) { background-color: #f8f9fa; }
+        .table-responsive { max-height: 550px; overflow-y: auto; margin-top: 15px; border: 1px solid #000; border-radius: 4px; }
         
-        .po-header-banner {
-            background-color: #3b82f6;
-            color: white;
-            padding: 10px 15px;
-            font-weight: bold;
-            font-size: 15px;
-            border-radius: 4px 4px 0 0;
-            display: flex;
-            justify-content: space-between;
-        }
+        /* Exact Image UI Styling for Web Preview */
+        .excel-preview-table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; font-weight: 600; }
+        .excel-preview-table td, .excel-preview-table th { border: 1px solid #000; padding: 6px; }
+        .row-dest { background-color: #5b9bd5; color: black; font-weight: bold; }
+        .row-myntra { background-color: #46b2c4; color: black; font-weight: bold; font-size: 14px; text-transform: uppercase; }
+        .row-yellow-hdr { background-color: #ffc000; color: black; font-weight: bold; }
+        .row-data:nth-child(even) { background-color: #ffffff; }
+        .row-data:nth-child(odd) { background-color: #f9f9f9; }
 
         .slips-wrapper { margin-top: 30px; }
         .packing-slip { background: #fff; border: 2px solid #222; padding: 20px; margin-bottom: 30px; page-break-after: always; border-radius: 4px; }
@@ -83,10 +80,9 @@
 
 <div class="container">
     <div class="no-print">
-        <h1>Myntra Order Analysis & Packing Slip Generator</h1>
-        <p class="subtitle">Upload files in their respective boxes below to auto-map PO, Delivery Challan & Sales Reports</p>
+        <h1>Myntra Order Analysis & Custom Excel Generator</h1>
+        <p class="subtitle">Upload files, customize Destination Name & PO, and export exact colored Excel reports.</p>
 
-        <!-- Separate Upload Boxes -->
         <div class="upload-grid">
             <div class="upload-card" onclick="document.getElementById('fileSalesOrder').click()">
                 <h4>1. Sales Order Wise Report</h4>
@@ -117,23 +113,26 @@
             </div>
         </div>
 
-        <!-- Filter & Control Panel -->
         <div id="controlsArea" class="controls-area">
             <div class="filter-row">
                 <div>
-                    <strong>📋 Select Order Number (Sales Order Report):</strong>
+                    <strong>🏢 Manual Destination Name:</strong>
+                    <input type="text" id="destInput" class="text-input" value="MYNTRA JABONG INDIA PVT LTD (LUHARI)" oninput="updateDestinationName()">
+                </div>
+                <div>
+                    <strong>📋 Select Order Number:</strong>
                     <select id="orderSelect" class="select-box" onchange="onOrderSelected()">
                         <option value="">-- Choose Order Number --</option>
                     </select>
                 </div>
                 <div>
-                    <strong>🔎 Search in Selected Order Data:</strong>
-                    <input type="text" id="searchInput" class="search-box" placeholder="Search SKU Code, Barcode, Style ID..." onkeyup="filterOrders()">
+                    <strong>🔎 Search Data:</strong>
+                    <input type="text" id="searchInput" class="search-box" placeholder="Search SKU Code, Barcode..." onkeyup="filterOrders()">
                 </div>
             </div>
             
             <div>
-                <button class="btn-action btn-green" onclick="exportMergedExcel()">📊 Export Matched Excel Report</button>
+                <button class="btn-action btn-green" onclick="exportExactStyledExcel()">📊 Export Matched Excel Report (Same Colors)</button>
                 <button class="btn-action btn-blue" onclick="window.print()">🖨️ Print Packing Slips</button>
             </div>
         </div>
@@ -145,14 +144,7 @@
 </div>
 
 <script>
-    let datasets = {
-        sales: [],
-        po: [],
-        poBarCode: '',
-        challan: [],
-        saleItem: []
-    };
-
+    let datasets = { sales: [], po: [], poBarCode: '', challan: [], saleItem: [] };
     let globalMergedData = [];
     let currentDisplayedData = [];
 
@@ -176,9 +168,7 @@
                 headerIdx = i;
             }
         }
-
         datasets.poBarCode = poBarcode || 'MYNJ-SAPL210826-4';
-
         if (headerIdx === -1) return [];
 
         let headers = rawJson[headerIdx].map(h => String(h).trim());
@@ -198,7 +188,6 @@
     function parseSheetSmartly(worksheet) {
         let rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
         if (rawJson.length === 0) return [];
-
         let headerIdx = 0;
         for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
             let rowStr = rawJson[i].map(c => String(c)).join(' ');
@@ -207,7 +196,6 @@
                 break;
             }
         }
-
         let headers = rawJson[headerIdx].map(h => String(h).trim());
         let result = [];
         for (let i = headerIdx + 1; i < rawJson.length; i++) {
@@ -227,7 +215,6 @@
         if (!file) return;
 
         document.getElementById('msg-' + type).innerText = '✓ Loaded: ' + file.name;
-
         const reader = new FileReader();
         reader.onload = function(evt) {
             const data = new Uint8Array(evt.target.result);
@@ -251,9 +238,7 @@
         if (datasets.sales.length > 0) {
             datasets.sales.forEach(row => {
                 let ordNo = row['Order No'] || row['ORDER_NO'] || row['DOC No'] || '';
-                if (ordNo && ordNo !== 'Order No') {
-                    orderMap[ordNo] = true;
-                }
+                if (ordNo && ordNo !== 'Order No') orderMap[ordNo] = true;
             });
         }
 
@@ -274,15 +259,13 @@
 
     function onOrderSelected() {
         let selectedOrder = document.getElementById('orderSelect').value;
-        
-        // PO File Lookup Map (SKU Code / Barcode => SKU Id, Style Id, SKU Code)
         let poLookup = {};
+
         datasets.po.forEach(row => {
             let skuCode = cleanKey(row['SKU Code']);
             let gtin = cleanKey(row['GTIN'] || row['BARCODE']);
             let skuId = row['SKU Id'] || '-';
             let styleId = row['Style Id'] || '-';
-            
             let obj = { skuCode: row['SKU Code'] || '-', styleId: styleId, skuId: skuId };
             if (skuCode) poLookup[skuCode] = obj;
             if (gtin) poLookup[gtin] = obj;
@@ -292,20 +275,17 @@
         let sourceRows = datasets.challan.length > 0 ? datasets.challan : datasets.po;
 
         sourceRows.forEach(row => {
-            // Delivery Challan Mapping Rules
             let size = row['SIZE'] || row['Size'] || '-';
-            let itemCode = row['ITEM_NAME'] || row['ITEM CODE'] || row['Item Code'] || '-'; // ITEM CODE gets ITEM_NAME
-            let itemDepartment = row['DEPARTMENT'] || row['Department'] || row['ITEAM NAME'] || '-'; // ITEAM NAME gets DEPARTMENT
+            let itemCode = row['ITEM_NAME'] || row['ITEM CODE'] || row['Item Code'] || '-';
+            let itemDepartment = row['DEPARTMENT'] || row['Department'] || row['ITEAM NAME'] || '-';
             let color = row['COLOR'] || row['Color'] || row['Colour'] || '-';
             let eanCode = row['BARCODE'] || row['Barcode'] || row['GTIN'] || row['Ean code'] || '-';
             let qty = parseFloat(row['CHALLAN_QUANTITY'] || row['QTY'] || row['Quantity'] || 1);
             let mrp = parseFloat(row['MRP'] || row['Mrp'] || 0);
-            
-            // RATE = MRP / QTY
             let rate = (qty > 0 && mrp > 0) ? (mrp / qty).toFixed(2) : 0;
             let boxNum = row['REMARKS'] || row['Remarks'] || row['box nu'] || row['Box No'] || '-';
+            let invoiceNo = row['Invoice Number'] || row['INVOICE_NO'] || 'SMTS26-27-000298';
 
-            // PO Matching for SKU Code, Style Id, SKU Id
             let cleanEan = cleanKey(eanCode);
             let poInfo = poLookup[cleanEan] || {
                 skuCode: row['SKU Code'] || '-',
@@ -314,19 +294,19 @@
             };
 
             finalRows.push({
-                poNumber: datasets.poBarCode || selectedOrder || 'MYNJ-SAPL210826-4',
                 skuCode: poInfo.skuCode,
                 styleId: poInfo.styleId,
                 skuId: poInfo.skuId,
                 size: size,
                 itemCode: itemCode,
-                itemName: itemDepartment, // DEPARTMENT data
+                itemName: itemDepartment,
                 color: color,
                 eanCode: eanCode,
                 qty: qty,
                 mrp: mrp,
                 rate: rate,
-                boxNum: boxNum
+                boxNum: boxNum,
+                invoiceNo: invoiceNo
             });
         });
 
@@ -337,41 +317,54 @@
         generateSlips(finalRows);
     }
 
+    function updateDestinationName() {
+        renderSummaryTable(currentDisplayedData);
+    }
+
     function renderSummaryTable(data) {
-        let poDisplay = datasets.poBarCode || 'MYNJ-SAPL210826-4';
+        let poDisplay = datasets.poBarCode || document.getElementById('orderSelect').value || 'MYNJ-SAPL210826-4';
+        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD (LUHARI)';
         let totalQty = data.reduce((sum, item) => sum + item.qty, 0);
 
         let html = `
-            <div class="po-header-banner">
-                <span>po: ${poDisplay}</span>
-                <span>G.TOTAL QTY: ${totalQty}</span>
-            </div>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>SKU Code</th>
-                        <th>Style Id</th>
-                        <th>SKU Id</th>
-                        <th>SIZE</th>
-                        <th>ITEM CODE</th>
-                        <th>ITEAM NAME</th>
-                        <th>color</th>
-                        <th>Ean code</th>
-                        <th>QTY</th>
-                        <th>MRP</th>
-                        <th>RATE</th>
-                        <th>box nu</th>
-                    </tr>
-                </thead>
+            <table class="excel-preview-table">
+                <!-- Top Row 1: Manual Destination -->
+                <tr>
+                    <td class="row-dest" style="width: 150px;">SHIP TO/DESTINATION</td>
+                    <td colspan="12" class="row-myntra">${destName}</td>
+                </tr>
+                <!-- Row 2: PO appears ONLY ONCE at top header -->
+                <tr style="background:#ffffff; font-weight:bold;">
+                    <td style="background:#f2f2f2;">po</td>
+                    <td colspan="4" style="text-align:left; padding-left:10px;">${poDisplay}</td>
+                    <td colspan="2" style="text-align:right;">G.TOTAL</td>
+                    <td></td>
+                    <td>${totalQty}</td>
+                    <td colspan="4"></td>
+                </tr>
+                <!-- Yellow Header Row 3 -->
+                <tr class="row-yellow-hdr">
+                    <td>SKU Code</td>
+                    <td>Style Id</td>
+                    <td>SKU Id</td>
+                    <td>SIZE</td>
+                    <td>ITEM CODE</td>
+                    <td>ITEAM NAME</td>
+                    <td>color</td>
+                    <td>Ean code</td>
+                    <td>QTY</td>
+                    <td>MRP</td>
+                    <td>RATE</td>
+                    <td>box num</td>
+                    <td>Invoice Number</td>
+                </tr>
                 <tbody>
         `;
 
-        data.forEach((item, idx) => {
+        data.forEach(item => {
             html += `
-                <tr>
-                    <td>${idx + 1}</td>
-                    <td><strong>${item.skuCode}</strong></td>
+                <tr class="row-data">
+                    <td style="text-align:left;">${item.skuCode}</td>
                     <td>${item.styleId}</td>
                     <td>${item.skuId}</td>
                     <td>${item.size}</td>
@@ -379,10 +372,11 @@
                     <td>${item.itemName}</td>
                     <td>${item.color}</td>
                     <td>${item.eanCode}</td>
-                    <td><strong>${item.qty}</strong></td>
+                    <td>${item.qty}</td>
                     <td>${item.mrp}</td>
                     <td>${item.rate}</td>
-                    <td><strong>${item.boxNum}</strong></td>
+                    <td>${item.boxNum}</td>
+                    <td>${item.invoiceNo}</td>
                 </tr>
             `;
         });
@@ -410,8 +404,9 @@
     function generateSlips(data) {
         const container = document.getElementById('slipsContainer');
         container.innerHTML = '';
-
         if (data.length === 0) return;
+
+        let poDisplay = datasets.poBarCode || document.getElementById('orderSelect').value || 'MYNJ-SAPL210826-4';
 
         const grouped = {};
         data.forEach(row => {
@@ -424,7 +419,6 @@
         for (let boxNo in grouped) {
             idx++;
             const items = grouped[boxNo];
-            const first = items[0];
             const barcodeId = "barcode-" + idx;
 
             const slipHtml = `
@@ -433,7 +427,7 @@
                         <div>
                             <div class="slip-title">Packing Slip</div>
                             <div style="font-size:13px; margin-top:5px;">
-                                <strong>PO No:</strong> ${first.poNumber} | 
+                                <strong>PO No:</strong> ${poDisplay} | 
                                 <strong>Box No:</strong> ${boxNo}
                             </div>
                         </div>
@@ -471,7 +465,7 @@
 
             container.insertAdjacentHTML('beforeend', slipHtml);
 
-            JsBarcode("#" + barcodeId, String(first.poNumber), {
+            JsBarcode("#" + barcodeId, String(poDisplay), {
                 format: "CODE128",
                 width: 1.5,
                 height: 40,
@@ -481,12 +475,96 @@
         }
     }
 
-    function exportMergedExcel() {
+    async function exportExactStyledExcel() {
         if (currentDisplayedData.length === 0) return;
-        const worksheet = XLSX.utils.json_to_sheet(currentDisplayedData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "PO Matched Report");
-        XLSX.writeFile(workbook, "PO_Matched_Report.xlsx");
+
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Matched Report');
+
+        let poDisplay = datasets.poBarCode || document.getElementById('orderSelect').value || 'MYNJ-SAPL210826-4';
+        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD (LUHARI)';
+        let totalQty = currentDisplayedData.reduce((sum, item) => sum + item.qty, 0);
+
+        // Column Widths
+        worksheet.columns = [
+            { width: 24 }, { width: 14 }, { width: 14 }, { width: 18 },
+            { width: 16 }, { width: 16 }, { width: 14 }, { width: 18 },
+            { width: 8 },  { width: 10 }, { width: 12 }, { width: 10 }, { width: 22 }
+        ];
+
+        // Row 1: Top Banner with Manual Destination Name
+        const row1 = worksheet.addRow(['SHIP TO/DESTINATION', destName, '', '', '', '', '', '', '', '', '', '', '']);
+        worksheet.mergeCells('B1:M1');
+        
+        row1.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B9BD5' } };
+        row1.getCell(1).font = { bold: true, color: { argb: 'FF000000' } };
+        row1.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+
+        row1.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF46B2C4' } };
+        row1.getCell(2).font = { bold: true, size: 13, color: { argb: 'FF000000' } };
+        row1.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
+
+        // Row 2: Single PO display at top row
+        const row2 = worksheet.addRow(['po', poDisplay, '', '', '', '', 'G.TOTAL', '', totalQty, '', '', '', '']);
+        worksheet.mergeCells('B2:E2');
+        worksheet.mergeCells('G2:H2');
+        
+        row2.getCell(1).font = { bold: true };
+        row2.getCell(2).font = { bold: true };
+        row2.getCell(7).font = { bold: true };
+        row2.getCell(7).alignment = { horizontal: 'right' };
+        row2.getCell(9).font = { bold: true };
+        row2.getCell(9).alignment = { horizontal: 'center' };
+
+        // Row 3: Bright Yellow Header Row
+        const headers = ['SKU Code', 'Style Id', 'SKU Id', 'SIZE', 'ITEM CODE', 'ITEAM NAME', 'color', 'Ean code', 'QTY', 'MRP', 'RATE', 'box num', 'Invoice Number'];
+        const row3 = worksheet.addRow(headers);
+        
+        row3.eachCell((cell) => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } };
+            cell.font = { bold: true, color: { argb: 'FF000000' } };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
+
+        // Data Rows (Without PO repeating)
+        currentDisplayedData.forEach(item => {
+            const dataRow = worksheet.addRow([
+                item.skuCode,
+                item.styleId,
+                item.skuId,
+                item.size,
+                item.itemCode,
+                item.itemName,
+                item.color,
+                item.eanCode,
+                item.qty,
+                item.mrp,
+                item.rate,
+                item.boxNum,
+                item.invoiceNo
+            ]);
+            
+            dataRow.getCell(1).alignment = { horizontal: 'left' };
+            dataRow.getCell(9).alignment = { horizontal: 'center' };
+            dataRow.getCell(12).alignment = { horizontal: 'center' };
+        });
+
+        // Gridlines / Borders
+        worksheet.eachRow((row) => {
+            row.eachCell((cell) => {
+                cell.border = {
+                    top: { style: 'thin', color: { argb: 'FF000000' } },
+                    left: { style: 'thin', color: { argb: 'FF000000' } },
+                    bottom: { style: 'thin', color: { argb: 'FF000000' } },
+                    right: { style: 'thin', color: { argb: 'FF000000' } }
+                };
+            });
+        });
+
+        // Download Excel File
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `Myntra_Report_${poDisplay}.xlsx`);
     }
 </script>
 
