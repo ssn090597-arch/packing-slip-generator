@@ -3,56 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Packing Slip Generator</title>
+    <title>E-Commerce Packing Slip Generator</title>
+    <!-- JsBarcode CDN for Barcode generation -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f7f6;
+            background-color: #f4f6f9;
             margin: 0;
             padding: 20px;
+            color: #333;
         }
 
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
-            background: #fff;
+            background: #ffffff;
             padding: 25px;
             border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
         h2 {
             text-align: center;
-            color: #333;
-            margin-bottom: 20px;
+            color: #1a252f;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 10px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .full-width {
+            grid-column: span 2;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
         }
 
         .form-group label {
-            display: block;
-            font-weight: bold;
+            font-weight: 600;
             margin-bottom: 5px;
+            font-size: 14px;
         }
 
-        .form-group input, .form-group textarea {
-            width: 100%;
+        .form-group input, .form-group textarea, .form-group select {
             padding: 10px;
-            box-sizing: border-box;
             border: 1px solid #ccc;
             border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .items-header {
+            font-weight: bold;
+            margin-top: 15px;
+            font-size: 16px;
         }
 
         .item-row {
             display: flex;
             gap: 10px;
-            margin-bottom: 10px;
+            margin-top: 8px;
         }
 
         .item-row input {
-            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
         }
 
         button {
@@ -61,71 +88,82 @@
             border: none;
             border-radius: 4px;
             font-weight: bold;
+            transition: 0.2s;
         }
 
         .btn-add {
-            background-color: #007bff;
+            background-color: #3498db;
             color: white;
-            margin-bottom: 15px;
+            margin-top: 10px;
         }
 
         .btn-submit {
-            background-color: #28a745;
+            background-color: #27ae60;
             color: white;
             width: 100%;
             font-size: 16px;
+            margin-top: 20px;
+            padding: 12px;
         }
 
         .btn-print {
-            background-color: #17a2b8;
+            background-color: #e67e22;
             color: white;
-            margin-top: 15px;
+            font-size: 16px;
             width: 100%;
+            margin-top: 20px;
+            padding: 12px;
             display: none;
         }
 
-        /* Slip Preview Design */
+        /* Packing Slip Output Preview */
         #slip-preview {
             display: none;
-            margin-top: 30px;
-            border: 2px dashed #333;
-            padding: 20px;
+            margin-top: 40px;
+            border: 2px dashed #444;
+            padding: 25px;
             background: #fff;
         }
 
-        .slip-header {
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 2px solid #333;
+        .slip-header-table {
+            width: 100%;
+            border-bottom: 2px solid #000;
             padding-bottom: 10px;
+            margin-bottom: 15px;
         }
 
-        .slip-addresses {
-            display: flex;
-            justify-content: space-between;
-            margin: 20px 0;
+        .barcode-box {
+            text-align: right;
         }
 
-        table {
+        .slip-address-box {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            border: 1px solid #ddd;
+            padding: 12px;
+            margin-bottom: 15px;
+            background: #fafafa;
+        }
+
+        .slip-items-table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 15px;
+            margin-top: 10px;
         }
 
-        table, th, td {
-            border: 1px solid #ddd;
-        }
-
-        th, td {
-            padding: 10px;
+        .slip-items-table th, .slip-items-table td {
+            border: 1px solid #333;
+            padding: 8px;
             text-align: left;
+            font-size: 13px;
         }
 
-        th {
-            background-color: #f2f2f2;
+        .slip-items-table th {
+            background-color: #eaeaea;
         }
 
-        /* Print Settings */
+        /* Print CSS for Thermal / Normal Printers */
         @media print {
             body * {
                 visibility: hidden;
@@ -139,6 +177,7 @@
                 top: 0;
                 width: 100%;
                 border: none;
+                padding: 0;
             }
             .btn-print {
                 display: none !important;
@@ -149,107 +188,157 @@
 <body>
 
 <div class="container">
-    <h2>Packing Slip Generator</h2>
+    <h2>E-Commerce Packing Slip Generator</h2>
 
-    <!-- Input Form -->
     <form id="packingForm">
-        <div class="form-group">
-            <label for="orderNo">Order Number / Order ID</label>
-            <input type="text" id="orderNo" required placeholder="e.g. #ORD-10023">
+        <div class="form-grid">
+            <div class="form-group">
+                <label for="orderNo">Order ID / Reference No.</label>
+                <input type="text" id="orderNo" required placeholder="e.g. ORD-987654">
+            </div>
+
+            <div class="form-group">
+                <label for="awbNo">AWB / Tracking Number (Delhivery/Courier)</label>
+                <input type="text" id="awbNo" required placeholder="e.g. 123456789012">
+            </div>
+
+            <div class="form-group">
+                <label for="courierPartner">Courier Partner</label>
+                <input type="text" id="courierPartner" required placeholder="e.g. Delhivery / Ecom Express / Bluedart">
+            </div>
+
+            <div class="form-group">
+                <label for="orderDate">Order Date</label>
+                <input type="date" id="orderDate" required>
+            </div>
+
+            <div class="form-group">
+                <label for="paymentMode">Payment Mode</label>
+                <select id="paymentMode" required>
+                    <option value="Prepaid">Prepaid</option>
+                    <option value="COD">Cash On Delivery (COD)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="channel">Sales Channel / Platform</label>
+                <input type="text" id="channel" placeholder="e.g. Website / Browntape / Amazon / Flipkart">
+            </div>
+
+            <div class="form-group full-width">
+                <label for="sellerDetails">Shipper / Seller Address (Dispatch Hub)</label>
+                <textarea id="sellerDetails" rows="3" required placeholder="Warehouse / Store Name, Full Address, GSTIN, Phone"></textarea>
+            </div>
+
+            <div class="form-group full-width">
+                <label for="customerDetails">Shipping / Delivery Address (Customer)</label>
+                <textarea id="customerDetails" rows="3" required placeholder="Customer Name, Street, Landmark, City, State, Pincode, Mobile"></textarea>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label for="orderDate">Date</label>
-            <input type="date" id="orderDate" required>
-        </div>
-
-        <div class="form-group">
-            <label for="sellerDetails">Seller / Sender Address</label>
-            <textarea id="sellerDetails" rows="3" required placeholder="Company Name, Address, Contact..."></textarea>
-        </div>
-
-        <div class="form-group">
-            <label for="customerDetails">Customer / Delivery Address</label>
-            <textarea id="customerDetails" rows="3" required placeholder="Customer Name, Address, Phone..."></textarea>
-        </div>
-
-        <label>Item List</label>
+        <div class="items-header">Product List (SKUs)</div>
         <div id="itemList">
             <div class="item-row">
-                <input type="text" placeholder="Item Description" class="item-name" required>
-                <input type="number" placeholder="Qty" class="item-qty" min="1" required style="max-width: 100px;">
+                <input type="text" placeholder="SKU Code" class="item-sku" style="width: 25%;" required>
+                <input type="text" placeholder="Item Name / Description" class="item-name" style="width: 55%;" required>
+                <input type="number" placeholder="Qty" class="item-qty" min="1" value="1" style="width: 20%;" required>
             </div>
         </div>
-        <button type="button" class="btn-add" onclick="addItemRow()">+ Add More Item</button>
+        <button type="button" class="btn-add" onclick="addItemRow()">+ Add SKU</button>
 
-        <button type="submit" class="btn-submit">Generate Packing Slip</button>
+        <button type="submit" class="btn-submit">Generate Packing Slip & Barcode</button>
     </form>
 
-    <!-- Slip Preview Area -->
+    <!-- Generated Slip Output -->
     <div id="slip-preview">
-        <div class="slip-header">
+        <table class="slip-header-table">
+            <tr>
+                <td>
+                    <h2 style="margin: 0; text-align: left;">PACKING SLIP</h2>
+                    <p style="margin: 3px 0; font-size: 13px;"><strong>Channel:</strong> <span id="outChannel"></span></p>
+                    <p style="margin: 3px 0; font-size: 13px;"><strong>Order ID:</strong> <span id="outOrderNo"></span></p>
+                    <p style="margin: 3px 0; font-size: 13px;"><strong>Date:</strong> <span id="outDate"></span></p>
+                    <p style="margin: 3px 0; font-size: 13px;"><strong>Payment:</strong> <span id="outPayment"></span></p>
+                </td>
+                <td class="barcode-box">
+                    <p style="margin: 0; font-size: 12px; font-weight: bold;">Courier: <span id="outCourier"></span></p>
+                    <svg id="barcode"></svg>
+                </td>
+            </tr>
+        </table>
+
+        <div class="slip-address-box">
             <div>
-                <h2>PACKING SLIP</h2>
-                <p><strong>Order ID:</strong> <span id="outOrderNo"></span></p>
+                <strong>SHIPPED FROM (SELLER):</strong>
+                <p id="outSeller" style="white-space: pre-line; margin-top: 5px; font-size: 13px;"></p>
             </div>
             <div>
-                <p><strong>Date:</strong> <span id="outDate"></span></p>
+                <strong>DELIVER TO (CUSTOMER):</strong>
+                <p id="outCustomer" style="white-space: pre-line; margin-top: 5px; font-size: 13px;"></p>
             </div>
         </div>
 
-        <div class="slip-addresses">
-            <div style="width: 45%;">
-                <strong>From (Sender):</strong>
-                <p id="outSeller" style="white-space: pre-line;"></p>
-            </div>
-            <div style="width: 45%;">
-                <strong>Ship To (Customer):</strong>
-                <p id="outCustomer" style="white-space: pre-line;"></p>
-            </div>
-        </div>
-
-        <table>
+        <table class="slip-items-table">
             <thead>
                 <tr>
-                    <th>S.No.</th>
-                    <th>Item Description</th>
-                    <th style="width: 80px; text-align: center;">Qty</th>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 25%;">SKU</th>
+                    <th style="width: 55%;">Product Name</th>
+                    <th style="width: 15%; text-align: center;">Qty</th>
                 </tr>
             </thead>
             <tbody id="outItemsTable"></tbody>
         </table>
 
-        <button class="btn-print" onclick="window.print()">Print Packing Slip</button>
+        <div style="margin-top: 20px; font-size: 11px; text-align: center; border-top: 1px solid #ccc; padding-top: 5px;">
+            <p>Thank you for your business! | Return Policy applies as per terms.</p>
+        </div>
+
+        <button class="btn-print" onclick="window.print()">Print / Save PDF</button>
     </div>
 </div>
 
 <script>
-    // Add Item Row dynamically
     function addItemRow() {
         const itemContainer = document.getElementById('itemList');
         const newRow = document.createElement('div');
         newRow.className = 'item-row';
         newRow.innerHTML = `
-            <input type="text" placeholder="Item Description" class="item-name" required>
-            <input type="number" placeholder="Qty" class="item-qty" min="1" required style="max-width: 100px;">
+            <input type="text" placeholder="SKU Code" class="item-sku" style="width: 25%;" required>
+            <input type="text" placeholder="Item Name / Description" class="item-name" style="width: 55%;" required>
+            <input type="number" placeholder="Qty" class="item-qty" min="1" value="1" style="width: 20%;" required>
         `;
         itemContainer.appendChild(newRow);
     }
 
-    // Form Submit Event
     document.getElementById('packingForm').addEventListener('submit', function(e) {
         e.preventDefault();
 
-        // Populate header details
-        document.getElementById('outOrderNo').innerText = document.getElementById('orderNo').value;
+        const awb = document.getElementById('awbNo').value;
+        const orderNo = document.getElementById('orderNo').value;
+
+        document.getElementById('outOrderNo').innerText = orderNo;
+        document.getElementById('outChannel').innerText = document.getElementById('channel').value || 'Direct';
         document.getElementById('outDate').innerText = document.getElementById('orderDate').value;
+        document.getElementById('outPayment').innerText = document.getElementById('paymentMode').value;
+        document.getElementById('outCourier').innerText = document.getElementById('courierPartner').value;
+
         document.getElementById('outSeller').innerText = document.getElementById('sellerDetails').value;
         document.getElementById('outCustomer').innerText = document.getElementById('customerDetails').value;
 
-        // Populate items table
+        // Generate Barcode using AWB Number
+        JsBarcode("#barcode", awb, {
+            format: "CODE128",
+            width: 1.8,
+            height: 50,
+            displayValue: true
+        });
+
+        // Items mapping
         const itemsTable = document.getElementById('outItemsTable');
         itemsTable.innerHTML = '';
 
+        const itemSkus = document.querySelectorAll('.item-sku');
         const itemNames = document.querySelectorAll('.item-name');
         const itemQtys = document.querySelectorAll('.item-qty');
 
@@ -257,17 +346,16 @@
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${index + 1}</td>
+                <td>${itemSkus[index].value}</td>
                 <td>${item.value}</td>
                 <td style="text-align: center;">${itemQtys[index].value}</td>
             `;
             itemsTable.appendChild(row);
         });
 
-        // Show slip preview and print button
         document.getElementById('slip-preview').style.display = 'block';
         document.querySelector('.btn-print').style.display = 'block';
 
-        // Scroll down to slip preview
         document.getElementById('slip-preview').scrollIntoView({ behavior: 'smooth' });
     });
 </script>
