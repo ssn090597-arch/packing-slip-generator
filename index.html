@@ -11,7 +11,7 @@
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #eef2f5; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1100px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .container { max-width: 1200px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         h1 { text-align: center; color: #1a252f; margin-bottom: 5px; }
         p.subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: 14px; }
         
@@ -48,10 +48,10 @@
         .search-box { width: 100%; padding: 10px 15px; font-size: 15px; border: 1px solid #ced4da; border-radius: 5px; margin-top: 8px; }
         #file-list { margin-top: 15px; font-size: 14px; color: #28a745; text-align: left; }
         
-        .table-responsive { max-height: 450px; overflow-y: auto; margin-top: 15px; border: 1px solid #dee2e6; }
-        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .table-responsive { max-height: 500px; overflow-y: auto; margin-top: 15px; border: 1px solid #dee2e6; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
         .data-table th, .data-table td { border: 1px solid #dee2e6; padding: 8px; text-align: left; }
-        .data-table th { background-color: #343a40; color: white; position: sticky; top: 0; }
+        .data-table th { background-color: #343a40; color: white; position: sticky; top: 0; z-index: 10; }
         .data-table tr:nth-child(even) { background-color: #f8f9fa; }
         
         .slips-wrapper { margin-top: 30px; }
@@ -60,7 +60,7 @@
         .slip-title { font-size: 20px; font-weight: bold; text-transform: uppercase; }
         .barcode-container svg { max-width: 220px; height: 45px; }
         .items-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .items-table th, .items-table td { border: 1px solid #333; padding: 8px; text-align: left; font-size: 13px; }
+        .items-table th, .items-table td { border: 1px solid #333; padding: 8px; text-align: left; font-size: 12px; }
         .items-table th { background-color: #f0f0f0; }
 
         @media print {
@@ -76,24 +76,24 @@
 <div class="container">
     <div class="no-print">
         <h1>Multi-File Order Matching & Analysis</h1>
-        <p class="subtitle">Excel/CSV Files (PO, Sale Report, Challan) upload karke Order Data matching & analysis karein</p>
+        <p class="subtitle">Myntra PO, Delivery Challan & Sales Order Reports ka merged automated data view</p>
 
         <div class="upload-section" id="dropZone" onclick="document.getElementById('excelFiles').click()">
             <label class="custom-file-upload">
-                📁 Upload Multiple Files (PO, Sale, Challan)
+                📁 Upload All Files (PO, Challan, Sales Order)
             </label>
-            <p style="margin-top: 10px; color: #777; font-size: 13px;">(Aap ek saath multiple files select kar sakte hain ya drag-and-drop karein)</p>
+            <p style="margin-top: 10px; color: #777; font-size: 13px;">(Aap ek saath saari files select karke upload karein ya yahan drag-drop karein)</p>
             <input type="file" id="excelFiles" accept=".xlsx, .xls, .csv" multiple onchange="handleFilesUpload(event.target.files)">
             <div id="file-list"></div>
         </div>
 
         <div id="controlsArea" class="controls-area">
             <div>
-                <strong>🔎 Search / Filter Order Data:</strong>
-                <input type="text" id="searchInput" class="search-box" placeholder="Type Order ID, Invoice Number, Barcode, or SKU..." onkeyup="filterOrders()">
+                <strong>🔎 Search Order Data:</strong>
+                <input type="text" id="searchInput" class="search-box" placeholder="Search by PO No, Barcode, SKU Code, Style ID..." onkeyup="filterOrders()">
             </div>
             <div style="margin-top: 15px;">
-                <button class="btn-action btn-green" onclick="exportMergedExcel()">📊 Export Matched Excel Data</button>
+                <button class="btn-action btn-green" onclick="exportMergedExcel()">📊 Export Matched Excel Report</button>
                 <button class="btn-action btn-blue" onclick="window.print()">🖨️ Print Packing Slips</button>
             </div>
         </div>
@@ -107,7 +107,7 @@
 <script>
     let globalMergedData = [];
 
-    // Setup Drag and Drop
+    // Drag-and-drop Handlers
     const dropZone = document.getElementById('dropZone');
     ['dragenter', 'dragover'].forEach(name => {
         dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.classList.add('dragover'); }, false);
@@ -133,7 +133,7 @@
         let headerIdx = 0;
         for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
             let rowStr = rawJson[i].map(c => String(c)).join(' ');
-            if (rowStr.includes('SKU Code') || rowStr.includes('GTIN') || rowStr.includes('Barcode') || rowStr.includes('INVOICE_NO')) {
+            if (rowStr.includes('SKU Code') || rowStr.includes('BARCODE') || rowStr.includes('GTIN') || rowStr.includes('Reserved Qty') || rowStr.includes('REMARKS')) {
                 headerIdx = i;
                 break;
             }
@@ -194,46 +194,55 @@
 
     function mergeAndAnalyzeData(datasets) {
         let masterMap = {};
-        globalMergedData = [];
 
         datasets.forEach(ds => {
             ds.rows.forEach(row => {
-                let rawEan = row.Barcode || row.BARCODE || row.GTIN || row['Ean code'] || row.EAN || '';
+                // Key Identifiers
+                let rawEan = row.BARCODE || row.Barcode || row.GTIN || row['Ean code'] || row.EAN || '';
                 let eanKey = cleanKey(rawEan);
 
-                let orderId = row.OrderID || row['PARTY ORDER NO'] || row['Sale Order No'] || row.po || row.INVOICE_NO || 'MYNJ-ORDER';
-                let invNo = row.InvoiceNo || row.INVOICE_NO || row.CHALLAN_NO || '-';
-                let sku = row.SKU || row['SKU Code'] || row['ITEM CODE'] || row['Item Name'] || row['Vendor Article Number'] || '-';
-                let itemName = row.ItemName || row['ITEAM NAME'] || row['ITEM_NAME'] || row['Vendor Article Name'] || 'Item';
-                let qty = parseFloat(row.Qty || row.SALE_QTY || row.CHALLAN_QUANTITY || row.Quantity || 1);
-                
-                let grossAmt = parseFloat(row['GROSS AMOUNT'] || 0);
-                let rate = parseFloat(row.Rate || row.RATE || row['Landing Price'] || row.MRP || row.Mrp || 0);
-                if (grossAmt > 0 && qty > 0) rate = (grossAmt / qty);
+                let skuCode = row['SKU Code'] || row.SKU || row['ITEM CODE'] || row['Vendor Article Number'] || '';
+                let cleanSku = cleanKey(skuCode);
 
-                let boxNo = row.BoxNo || row['box num'] || row.REMARKS || 1;
+                let primaryKey = eanKey || cleanSku;
+                if (!primaryKey) return;
+
+                // Field Extractions
+                let poNum = row['PO NO'] || row['PO Number'] || row['PARTY ORDER NO'] || row['Sale Order No'] || row.po || row.PO_NO || '';
+                let skuId = row['SKU Id'] || row.SKU_ID || row['Sku Id'] || '';
+                let styleId = row['Style Id'] || row.STYLE_ID || row['Style ID'] || '';
+                let itemName = row['Vendor Article Name'] || row.ItemName || row['ITEAM NAME'] || row['ITEM_NAME'] || '';
+                let landingPrice = parseFloat(row['Landing Price'] || row.Rate || row.RATE || row.MRP || 0);
+
+                // Reserved Qty (from Sales Order Report)
+                let reservedQty = parseFloat(row['Reserved Qty'] || row['RESERVED_QTY'] || row.Qty || row.Quantity || 0);
+
+                // Box No (from REMARKS of Delivery Challan)
+                let boxNo = row.REMARKS || row.Remarks || row.BoxNo || row['box num'] || '';
                 if (typeof boxNo === 'string' && boxNo.match(/\d+/)) {
                     boxNo = boxNo.match(/\d+/)[0];
                 }
 
-                let lookupKey = eanKey ? eanKey : (orderId + "_" + sku);
-
-                if (!masterMap[lookupKey]) {
-                    masterMap[lookupKey] = {
-                        OrderID: orderId,
-                        InvoiceNo: invNo,
-                        SKU: sku,
-                        ItemName: itemName,
+                if (!masterMap[primaryKey]) {
+                    masterMap[primaryKey] = {
+                        PONumber: poNum,
                         Barcode: rawEan || eanKey,
-                        Qty: qty,
-                        Rate: rate ? Number(rate.toFixed(3)) : 0,
-                        BoxNo: boxNo
+                        SKUId: skuId,
+                        StyleId: styleId,
+                        SKUCode: skuCode || cleanSku,
+                        ArticleName: itemName,
+                        LandingPrice: landingPrice ? Number(landingPrice.toFixed(2)) : 0,
+                        ReservedQty: reservedQty,
+                        BoxNo: boxNo || 1
                     };
                 } else {
-                    if (invNo !== '-') masterMap[lookupKey].InvoiceNo = invNo;
-                    if (rate > 0) masterMap[lookupKey].Rate = Number(rate.toFixed(3));
-                    if (boxNo !== 1) masterMap[lookupKey].BoxNo = boxNo;
-                    if (qty > masterMap[lookupKey].Qty) masterMap[lookupKey].Qty = qty;
+                    if (poNum) masterMap[primaryKey].PONumber = poNum;
+                    if (skuId) masterMap[primaryKey].SKUId = skuId;
+                    if (styleId) masterMap[primaryKey].StyleId = styleId;
+                    if (itemName) masterMap[primaryKey].ArticleName = itemName;
+                    if (landingPrice > 0) masterMap[primaryKey].LandingPrice = Number(landingPrice.toFixed(2));
+                    if (reservedQty > 0) masterMap[primaryKey].ReservedQty = reservedQty;
+                    if (boxNo) masterMap[primaryKey].BoxNo = boxNo;
                 }
             });
         });
@@ -256,14 +265,15 @@
                 <thead>
                     <tr>
                         <th>#</th>
-                        <th>Order / PO ID</th>
-                        <th>Invoice No</th>
+                        <th>PO Number</th>
+                        <th>BARCODE</th>
+                        <th>SKU Id</th>
+                        <th>Style Id</th>
                         <th>SKU Code</th>
-                        <th>Item Name</th>
-                        <th>Barcode / EAN</th>
-                        <th>Qty</th>
-                        <th>Rate (₹)</th>
-                        <th>Box No</th>
+                        <th>Article / Item Name</th>
+                        <th>Landing Price (₹)</th>
+                        <th>Reserved Qty</th>
+                        <th>Box No (Remarks)</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -273,14 +283,15 @@
             html += `
                 <tr>
                     <td>${idx + 1}</td>
-                    <td><strong>${item.OrderID}</strong></td>
-                    <td>${item.InvoiceNo}</td>
-                    <td>${item.SKU}</td>
-                    <td>${item.ItemName}</td>
-                    <td>${item.Barcode}</td>
-                    <td>${item.Qty}</td>
-                    <td>${item.Rate}</td>
-                    <td>${item.BoxNo}</td>
+                    <td><strong>${item.PONumber || '-'}</strong></td>
+                    <td>${item.Barcode || '-'}</td>
+                    <td>${item.SKUId || '-'}</td>
+                    <td>${item.StyleId || '-'}</td>
+                    <td>${item.SKUCode || '-'}</td>
+                    <td>${item.ArticleName || '-'}</td>
+                    <td>${item.LandingPrice || 0}</td>
+                    <td><strong>${item.ReservedQty || 0}</strong></td>
+                    <td>${item.BoxNo || '-'}</td>
                 </tr>
             `;
         });
@@ -292,11 +303,12 @@
     function filterOrders() {
         const query = document.getElementById('searchInput').value.toLowerCase().trim();
         const filtered = globalMergedData.filter(item => {
-            return String(item.OrderID).toLowerCase().includes(query) ||
-                   String(item.InvoiceNo).toLowerCase().includes(query) ||
-                   String(item.SKU).toLowerCase().includes(query) ||
+            return String(item.PONumber).toLowerCase().includes(query) ||
                    String(item.Barcode).toLowerCase().includes(query) ||
-                   String(item.ItemName).toLowerCase().includes(query);
+                   String(item.SKUId).toLowerCase().includes(query) ||
+                   String(item.StyleId).toLowerCase().includes(query) ||
+                   String(item.SKUCode).toLowerCase().includes(query) ||
+                   String(item.ArticleName).toLowerCase().includes(query);
         });
 
         renderSummaryTable(filtered);
@@ -309,15 +321,15 @@
 
         const grouped = {};
         data.forEach(row => {
-            const key = row.OrderID || 'ORD-MAIN';
+            const key = row.PONumber || 'PO-MAIN';
             if (!grouped[key]) grouped[key] = [];
             grouped[key].push(row);
         });
 
         let idx = 0;
-        for (let orderId in grouped) {
+        for (let poNum in grouped) {
             idx++;
-            const items = grouped[orderId];
+            const items = grouped[poNum];
             const first = items[0];
             const barcodeId = "barcode-" + idx;
 
@@ -327,9 +339,8 @@
                         <div>
                             <div class="slip-title">Packing Slip</div>
                             <div style="font-size:13px; margin-top:5px;">
-                                <strong>Order/PO:</strong> ${orderId} | 
-                                <strong>Invoice:</strong> ${first.InvoiceNo} | 
-                                <strong>Box:</strong> ${first.BoxNo}
+                                <strong>PO No:</strong> ${poNum} | 
+                                <strong>Box No:</strong> ${first.BoxNo}
                             </div>
                         </div>
                         <div class="barcode-container">
@@ -340,21 +351,23 @@
                     <table class="items-table">
                         <thead>
                             <tr>
-                                <th style="width: 8%;">#</th>
-                                <th style="width: 25%;">SKU</th>
-                                <th style="width: 42%;">Item Description</th>
-                                <th style="width: 15%;">Barcode</th>
-                                <th style="width: 10%; text-align: center;">Qty</th>
+                                <th style="width: 6%;">#</th>
+                                <th style="width: 18%;">SKU Code</th>
+                                <th style="width: 16%;">SKU Id / Style Id</th>
+                                <th style="width: 32%;">Vendor Article Name</th>
+                                <th style="width: 16%;">Barcode</th>
+                                <th style="width: 12%; text-align: center;">Reserved Qty</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${items.map((item, i) => `
                                 <tr>
                                     <td>${i + 1}</td>
-                                    <td>${item.SKU}</td>
-                                    <td>${item.ItemName}</td>
+                                    <td>${item.SKUCode}</td>
+                                    <td>${item.SKUId} / ${item.StyleId}</td>
+                                    <td>${item.ArticleName}</td>
                                     <td>${item.Barcode}</td>
-                                    <td style="text-align: center;">${item.Qty}</td>
+                                    <td style="text-align: center; font-weight:bold;">${item.ReservedQty}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -364,7 +377,7 @@
 
             container.insertAdjacentHTML('beforeend', slipHtml);
 
-            JsBarcode("#" + barcodeId, String(orderId), {
+            JsBarcode("#" + barcodeId, String(poNum), {
                 format: "CODE128",
                 width: 1.5,
                 height: 40,
@@ -378,8 +391,8 @@
         if (globalMergedData.length === 0) return;
         const worksheet = XLSX.utils.json_to_sheet(globalMergedData);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Matched Data");
-        XLSX.writeFile(workbook, "Matched_Order_Report.xlsx");
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Matched PO Data");
+        XLSX.writeFile(workbook, "Matched_PO_Report.xlsx");
     }
 </script>
 
