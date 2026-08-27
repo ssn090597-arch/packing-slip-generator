@@ -3,55 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-File Order Matching & Analysis</title>
+    <title>Myntra Order Analysis & Matching System</title>
     <!-- XLSX library for parsing Excel/CSV files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- JsBarcode library -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #eef2f5; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1200px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        body { background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 1250px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         h1 { text-align: center; color: #1a252f; margin-bottom: 5px; }
         p.subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: 14px; }
         
-        .upload-section {
+        .upload-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .upload-card {
             border: 2px dashed #007bff;
             background-color: #f8f9fa;
-            padding: 35px 25px;
+            padding: 15px;
             text-align: center;
             border-radius: 8px;
-            margin-bottom: 20px;
             cursor: pointer;
             transition: 0.3s;
         }
-        .upload-section:hover, .upload-section.dragover { background-color: #e9ecef; border-color: #0056b3; }
+        .upload-card:hover { background-color: #e9ecef; border-color: #0056b3; }
+        .upload-card h4 { margin: 0 0 8px 0; color: #007bff; font-size: 14px; }
+        .upload-card p { margin: 5px 0 0 0; font-size: 12px; color: #28a745; word-break: break-all; }
         input[type="file"] { display: none; }
+
+        .controls-area { display: none; margin-top: 20px; background: #eef2f7; padding: 18px; border-radius: 8px; border: 1px solid #cbd5e1; }
+        .select-box, .search-box { width: 100%; padding: 10px 12px; font-size: 14px; border: 1px solid #ced4da; border-radius: 5px; margin-top: 6px; }
         
-        .custom-file-upload {
-            display: inline-block;
-            padding: 12px 24px;
-            cursor: pointer;
-            background-color: #007bff;
-            color: white;
-            border-radius: 5px;
-            font-weight: bold;
-            font-size: 15px;
-        }
+        .filter-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
         
-        .btn-action { display: inline-block; margin: 5px; padding: 10px 18px; color: white; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer; border: none; }
+        .btn-action { display: inline-block; margin: 5px 5px 0 0; padding: 10px 18px; color: white; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer; border: none; }
         .btn-green { background-color: #28a745; }
         .btn-blue { background-color: #17a2b8; }
-        .btn-secondary { background-color: #6c757d; }
-
-        .controls-area { display: none; margin-top: 20px; background: #f1f3f5; padding: 15px; border-radius: 6px; }
-        .search-box { width: 100%; padding: 10px 15px; font-size: 15px; border: 1px solid #ced4da; border-radius: 5px; margin-top: 8px; }
-        #file-list { margin-top: 15px; font-size: 14px; color: #28a745; text-align: left; }
         
-        .table-responsive { max-height: 500px; overflow-y: auto; margin-top: 15px; border: 1px solid #dee2e6; }
+        .table-responsive { max-height: 500px; overflow-y: auto; margin-top: 15px; border: 1px solid #dee2e6; border-radius: 6px; }
         .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
         .data-table th, .data-table td { border: 1px solid #dee2e6; padding: 8px; text-align: left; }
-        .data-table th { background-color: #343a40; color: white; position: sticky; top: 0; z-index: 10; }
+        .data-table th { background-color: #212529; color: white; position: sticky; top: 0; z-index: 10; }
         .data-table tr:nth-child(even) { background-color: #f8f9fa; }
         
         .slips-wrapper { margin-top: 30px; }
@@ -75,24 +72,56 @@
 
 <div class="container">
     <div class="no-print">
-        <h1>Multi-File Order Matching & Analysis</h1>
-        <p class="subtitle">Myntra PO, Delivery Challan & Sales Order Reports ka merged automated data view</p>
+        <h1>Myntra PO, Delivery Challan & Sales Order Analysis</h1>
+        <p class="subtitle">Sabhi files ko unke alag upload box me daalein aur Order Select karke Report generate karein</p>
 
-        <div class="upload-section" id="dropZone" onclick="document.getElementById('excelFiles').click()">
-            <label class="custom-file-upload">
-                📁 Upload All Files (PO, Challan, Sales Order)
-            </label>
-            <p style="margin-top: 10px; color: #777; font-size: 13px;">(Aap ek saath saari files select karke upload karein ya yahan drag-drop karein)</p>
-            <input type="file" id="excelFiles" accept=".xlsx, .xls, .csv" multiple onchange="handleFilesUpload(event.target.files)">
-            <div id="file-list"></div>
+        <!-- Separate Upload Boxes -->
+        <div class="upload-grid">
+            <div class="upload-card" onclick="document.getElementById('fileSalesOrder').click()">
+                <h4>1. Sales Order Wise Report</h4>
+                <span>📁 Select File</span>
+                <input type="file" id="fileSalesOrder" accept=".xlsx, .xls, .csv" onchange="loadIndividualFile(event, 'sales')">
+                <p id="msg-sales"></p>
+            </div>
+
+            <div class="upload-card" onclick="document.getElementById('filePO').click()">
+                <h4>2. Myntra PO File</h4>
+                <span>📁 Select File</span>
+                <input type="file" id="filePO" accept=".xlsx, .xls, .csv" onchange="loadIndividualFile(event, 'po')">
+                <p id="msg-po"></p>
+            </div>
+
+            <div class="upload-card" onclick="document.getElementById('fileChallan').click()">
+                <h4>3. Delivery Challan (Pending Box)</h4>
+                <span>📁 Select File</span>
+                <input type="file" id="fileChallan" accept=".xlsx, .xls, .csv" onchange="loadIndividualFile(event, 'challan')">
+                <p id="msg-challan"></p>
+            </div>
+
+            <div class="upload-card" onclick="document.getElementById('fileSaleItem').click()">
+                <h4>4. Sale Report Item Wise</h4>
+                <span>📁 Select File</span>
+                <input type="file" id="fileSaleItem" accept=".xlsx, .xls, .csv" onchange="loadIndividualFile(event, 'saleItem')">
+                <p id="msg-saleItem"></p>
+            </div>
         </div>
 
+        <!-- Filter & Control Panel -->
         <div id="controlsArea" class="controls-area">
-            <div>
-                <strong>🔎 Search Order Data:</strong>
-                <input type="text" id="searchInput" class="search-box" placeholder="Search by PO No, Barcode, SKU Code, Style ID..." onkeyup="filterOrders()">
+            <div class="filter-row">
+                <div>
+                    <strong>📋 Select Order Number (Sales Order Report):</strong>
+                    <select id="orderSelect" class="select-box" onchange="onOrderSelected()">
+                        <option value="">-- Choose Order Number --</option>
+                    </select>
+                </div>
+                <div>
+                    <strong>🔎 Search in Selected Order Data:</strong>
+                    <input type="text" id="searchInput" class="search-box" placeholder="Search Barcode, SKU, Style ID..." onkeyup="filterOrders()">
+                </div>
             </div>
-            <div style="margin-top: 15px;">
+            
+            <div>
                 <button class="btn-action btn-green" onclick="exportMergedExcel()">📊 Export Matched Excel Report</button>
                 <button class="btn-action btn-blue" onclick="window.print()">🖨️ Print Packing Slips</button>
             </div>
@@ -105,20 +134,15 @@
 </div>
 
 <script>
-    let globalMergedData = [];
+    let datasets = {
+        sales: [],
+        po: [],
+        challan: [],
+        saleItem: []
+    };
 
-    // Drag-and-drop Handlers
-    const dropZone = document.getElementById('dropZone');
-    ['dragenter', 'dragover'].forEach(name => {
-        dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.classList.add('dragover'); }, false);
-    });
-    ['dragleave', 'drop'].forEach(name => {
-        dropZone.addEventListener(name, (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); }, false);
-    });
-    dropZone.addEventListener('drop', (e) => {
-        const dt = e.dataTransfer;
-        if (dt.files && dt.files.length > 0) handleFilesUpload(dt.files);
-    });
+    let globalMergedData = [];
+    let currentDisplayedData = [];
 
     function cleanKey(val) {
         if (!val) return '';
@@ -133,7 +157,7 @@
         let headerIdx = 0;
         for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
             let rowStr = rawJson[i].map(c => String(c)).join(' ');
-            if (rowStr.includes('SKU Code') || rowStr.includes('BARCODE') || rowStr.includes('GTIN') || rowStr.includes('Reserved Qty') || rowStr.includes('REMARKS')) {
+            if (rowStr.includes('SKU Code') || rowStr.includes('BARCODE') || rowStr.includes('GTIN') || rowStr.includes('Order No') || rowStr.includes('REMARKS') || rowStr.includes('INVOICE_NO')) {
                 headerIdx = i;
                 break;
             }
@@ -153,110 +177,136 @@
         return result;
     }
 
-    function handleFilesUpload(files) {
-        if (!files || files.length === 0) return;
+    function loadIndividualFile(event, type) {
+        const file = event.target.files[0];
+        if (!file) return;
 
-        let fileListHtml = "<strong>Uploaded Files:</strong><ul style='margin-top:5px;'>";
-        for (let f of files) {
-            fileListHtml += `<li>📄 ${f.name}</li>`;
-        }
-        fileListHtml += "</ul>";
-        document.getElementById('file-list').innerHTML = fileListHtml;
+        document.getElementById('msg-' + type).innerText = '✓ Loaded: ' + file.name;
 
-        let readPromises = [];
-        let parsedDatasets = [];
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            let allRows = [];
+            workbook.SheetNames.forEach(sheetName => {
+                const worksheet = workbook.Sheets[sheetName];
+                const rows = parseSheetSmartly(worksheet);
+                allRows = allRows.concat(rows);
+            });
 
-        for (let i = 0; i < files.length; i++) {
-            readPromises.push(new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    const data = new Uint8Array(evt.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    
-                    let allRows = [];
-                    workbook.SheetNames.forEach(sheetName => {
-                        const worksheet = workbook.Sheets[sheetName];
-                        const rows = parseSheetSmartly(worksheet);
-                        allRows = allRows.concat(rows);
-                    });
-
-                    parsedDatasets.push({ fileName: files[i].name, rows: allRows });
-                    resolve();
-                };
-                reader.readAsArrayBuffer(files[i]);
-            }));
-        }
-
-        Promise.all(readPromises).then(() => {
-            mergeAndAnalyzeData(parsedDatasets);
-        });
+            datasets[type] = allRows;
+            processAllData();
+        };
+        reader.readAsArrayBuffer(file);
     }
 
-    function mergeAndAnalyzeData(datasets) {
-        let masterMap = {};
+    function processAllData() {
+        // Populating Order Select Dropdown from Sales Order Report
+        let orderSelect = document.getElementById('orderSelect');
+        let orderMap = {};
 
-        datasets.forEach(ds => {
-            ds.rows.forEach(row => {
-                // Key Identifiers
-                let rawEan = row.BARCODE || row.Barcode || row.GTIN || row['Ean code'] || row.EAN || '';
-                let eanKey = cleanKey(rawEan);
-
-                let skuCode = row['SKU Code'] || row.SKU || row['ITEM CODE'] || row['Vendor Article Number'] || '';
-                let cleanSku = cleanKey(skuCode);
-
-                let primaryKey = eanKey || cleanSku;
-                if (!primaryKey) return;
-
-                // Field Extractions
-                let poNum = row['PO NO'] || row['PO Number'] || row['PARTY ORDER NO'] || row['Sale Order No'] || row.po || row.PO_NO || '';
-                let skuId = row['SKU Id'] || row.SKU_ID || row['Sku Id'] || '';
-                let styleId = row['Style Id'] || row.STYLE_ID || row['Style ID'] || '';
-                let itemName = row['Vendor Article Name'] || row.ItemName || row['ITEAM NAME'] || row['ITEM_NAME'] || '';
-                let landingPrice = parseFloat(row['Landing Price'] || row.Rate || row.RATE || row.MRP || 0);
-
-                // Reserved Qty (from Sales Order Report)
-                let reservedQty = parseFloat(row['Reserved Qty'] || row['RESERVED_QTY'] || row.Qty || row.Quantity || 0);
-
-                // Box No (from REMARKS of Delivery Challan)
-                let boxNo = row.REMARKS || row.Remarks || row.BoxNo || row['box num'] || '';
-                if (typeof boxNo === 'string' && boxNo.match(/\d+/)) {
-                    boxNo = boxNo.match(/\d+/)[0];
+        if (datasets.sales.length > 0) {
+            datasets.sales.forEach(row => {
+                let ordNo = row['Order No'] || row['ORDER_NO'] || row['DOC No'] || '';
+                if (ordNo && ordNo !== 'Order No') {
+                    orderMap[ordNo] = true;
                 }
+            });
+        }
 
-                if (!masterMap[primaryKey]) {
-                    masterMap[primaryKey] = {
-                        PONumber: poNum,
-                        Barcode: rawEan || eanKey,
-                        SKUId: skuId,
-                        StyleId: styleId,
-                        SKUCode: skuCode || cleanSku,
-                        ArticleName: itemName,
-                        LandingPrice: landingPrice ? Number(landingPrice.toFixed(2)) : 0,
-                        ReservedQty: reservedQty,
-                        BoxNo: boxNo || 1
-                    };
-                } else {
-                    if (poNum) masterMap[primaryKey].PONumber = poNum;
-                    if (skuId) masterMap[primaryKey].SKUId = skuId;
-                    if (styleId) masterMap[primaryKey].StyleId = styleId;
-                    if (itemName) masterMap[primaryKey].ArticleName = itemName;
-                    if (landingPrice > 0) masterMap[primaryKey].LandingPrice = Number(landingPrice.toFixed(2));
-                    if (reservedQty > 0) masterMap[primaryKey].ReservedQty = reservedQty;
-                    if (boxNo) masterMap[primaryKey].BoxNo = boxNo;
-                }
+        orderSelect.innerHTML = '<option value="">-- Choose Order Number --</option>';
+        Object.keys(orderMap).forEach(ord => {
+            orderSelect.innerHTML += `<option value="${ord}">${ord}</option>`;
+        });
+
+        document.getElementById('controlsArea').style.display = 'block';
+
+        // Auto Select first order if available
+        if (Object.keys(orderMap).length > 0) {
+            orderSelect.selectedIndex = 1;
+            onOrderSelected();
+        }
+    }
+
+    function onOrderSelected() {
+        let selectedOrder = document.getElementById('orderSelect').value;
+        if (!selectedOrder && datasets.sales.length > 0) return;
+
+        let poMap = {};
+        // Index PO Data by Barcode / SKU
+        datasets.po.forEach(row => {
+            let barcode = cleanKey(row.GTIN || row.BARCODE || row.Barcode || row.EAN);
+            let skuCode = cleanKey(row['SKU Code'] || row['SKU Id']);
+            let key = barcode || skuCode;
+            if (key) {
+                poMap[key] = {
+                    poNum: row['PO NO'] || row['PO Number'] || 'MYNJ-SAPL210826-4',
+                    skuId: row['SKU Id'] || '-',
+                    styleId: row['Style Id'] || '-',
+                    skuCode: row['SKU Code'] || '-',
+                    articleName: row['Vendor Article Name'] || row['Item Name'] || '-',
+                    landingPrice: parseFloat(row['Landing Price'] || row.Rate || row.MRP || 0)
+                };
+            }
+        });
+
+        // Index Delivery Challan Box Count by Barcode / SKU / Article
+        let challanBoxMap = {};
+        datasets.challan.forEach(row => {
+            let barcode = cleanKey(row.BARCODE || row.Barcode);
+            let boxNo = row.REMARKS || row.Remarks || row.BoxNo || row['box num'] || '-';
+            if (typeof boxNo === 'string' && boxNo.match(/\d+/)) {
+                boxNo = boxNo.match(/\d+/)[0];
+            }
+            if (barcode) {
+                challanBoxMap[barcode] = boxNo;
+            }
+        });
+
+        // Filter Sales Data for selected order
+        let mergedList = [];
+        let filterSales = datasets.sales.filter(r => (r['Order No'] || r['ORDER_NO'] || r['DOC No']) === selectedOrder);
+
+        // If Sales file not uploaded, use PO file rows directly
+        let sourceRows = filterSales.length > 0 ? filterSales : datasets.po;
+
+        sourceRows.forEach(row => {
+            let barcode = cleanKey(row.BARCODE || row.Barcode || row.GTIN || row.EAN);
+            let skuCode = cleanKey(row['SKU Code'] || row['ITEM CODE']);
+            let lookupKey = barcode || skuCode;
+
+            let poData = poMap[lookupKey] || {
+                poNum: row['PARTY ORDER NO'] || row['PO NO'] || selectedOrder || 'MYNJ-SAPL210826-4',
+                skuId: row['SKU Id'] || '-',
+                styleId: row['Style Id'] || '-',
+                skuCode: row['SKU Code'] || skuCode || '-',
+                articleName: row['Vendor Article Name'] || row['Item Name'] || row['ITEM_NAME'] || '-',
+                landingPrice: parseFloat(row['Landing Price'] || row.MRP || 0)
+            };
+
+            let reservedQty = parseFloat(row['Reserved Qty'] || row['Order Qty'] || row.Quantity || row.SALE_QTY || 1);
+            let boxNo = challanBoxMap[barcode] || row.REMARKS || row.Remarks || '-';
+
+            mergedList.push({
+                OrderNo: selectedOrder || poData.poNum,
+                PONumber: poData.poNum,
+                Barcode: barcode || row.BARCODE || '-',
+                SKUId: poData.skuId,
+                StyleId: poData.styleId,
+                SKUCode: poData.skuCode,
+                ArticleName: poData.articleName,
+                LandingPrice: poData.landingPrice ? Number(poData.landingPrice.toFixed(2)) : 0,
+                ReservedQty: reservedQty,
+                BoxNo: boxNo
             });
         });
 
-        globalMergedData = Object.values(masterMap);
+        globalMergedData = mergedList;
+        currentDisplayedData = mergedList;
 
-        if (globalMergedData.length === 0) {
-            alert('Data process nahi ho saka. Kripya check karein ki sahi Excel files upload hui hain.');
-            return;
-        }
-
-        document.getElementById('controlsArea').style.display = 'block';
-        renderSummaryTable(globalMergedData);
-        generateSlips(globalMergedData);
+        renderSummaryTable(mergedList);
+        generateSlips(mergedList);
     }
 
     function renderSummaryTable(data) {
@@ -311,6 +361,7 @@
                    String(item.ArticleName).toLowerCase().includes(query);
         });
 
+        currentDisplayedData = filtered;
         renderSummaryTable(filtered);
         generateSlips(filtered);
     }
@@ -318,6 +369,8 @@
     function generateSlips(data) {
         const container = document.getElementById('slipsContainer');
         container.innerHTML = '';
+
+        if (data.length === 0) return;
 
         const grouped = {};
         data.forEach(row => {
@@ -339,7 +392,7 @@
                         <div>
                             <div class="slip-title">Packing Slip</div>
                             <div style="font-size:13px; margin-top:5px;">
-                                <strong>PO No:</strong> ${poNum} | 
+                                <strong>PO / Order No:</strong> ${poNum} | 
                                 <strong>Box No:</strong> ${first.BoxNo}
                             </div>
                         </div>
@@ -388,11 +441,11 @@
     }
 
     function exportMergedExcel() {
-        if (globalMergedData.length === 0) return;
-        const worksheet = XLSX.utils.json_to_sheet(globalMergedData);
+        if (currentDisplayedData.length === 0) return;
+        const worksheet = XLSX.utils.json_to_sheet(currentDisplayedData);
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Matched PO Data");
-        XLSX.writeFile(workbook, "Matched_PO_Report.xlsx");
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Order Report");
+        XLSX.writeFile(workbook, "Order_Matched_Report.xlsx");
     }
 </script>
 
