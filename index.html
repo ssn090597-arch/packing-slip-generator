@@ -1,10 +1,12 @@
 <!DOCTYPE html>
-<html lang="hi">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>E-Commerce Packing Slip Generator</title>
-    <!-- JsBarcode CDN for Barcode generation -->
+    <title>Bulk Packing Slip Generator</title>
+    <!-- XLSX library for parsing Excel/CSV files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- JsBarcode library for barcode rendering -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         * {
@@ -13,174 +15,222 @@
         }
 
         body {
-            background-color: #f4f6f9;
+            background-color: #eef2f5;
             margin: 0;
             padding: 20px;
             color: #333;
         }
 
         .container {
-            max-width: 900px;
+            max-width: 950px;
             margin: 0 auto;
             background: #ffffff;
             padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
 
-        h2 {
+        h1 {
             text-align: center;
             color: #1a252f;
-            margin-bottom: 25px;
-            border-bottom: 2px solid #2c3e50;
-            padding-bottom: 10px;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .full-width {
-            grid-column: span 2;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group label {
-            font-weight: 600;
             margin-bottom: 5px;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 25px;
             font-size: 14px;
         }
 
-        .form-group input, .form-group textarea, .form-group select {
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 14px;
+        .upload-section {
+            border: 2px dashed #007bff;
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            transition: 0.3s;
         }
 
-        .items-header {
-            font-weight: bold;
-            margin-top: 15px;
-            font-size: 16px;
+        .upload-section:hover {
+            background-color: #e9ecef;
         }
 
-        .item-row {
-            display: flex;
-            gap: 10px;
-            margin-top: 8px;
+        input[type="file"] {
+            display: none;
         }
 
-        .item-row input {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        button {
+        .custom-file-upload {
+            display: inline-block;
+            padding: 12px 24px;
             cursor: pointer;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            border-radius: 5px;
             font-weight: bold;
+            font-size: 15px;
             transition: 0.2s;
         }
 
-        .btn-add {
-            background-color: #3498db;
-            color: white;
-            margin-top: 10px;
+        .custom-file-upload:hover {
+            background-color: #0056b3;
         }
 
-        .btn-submit {
-            background-color: #27ae60;
+        .btn-sample {
+            display: inline-block;
+            margin-left: 10px;
+            padding: 12px 20px;
+            background-color: #6c757d;
             color: white;
-            width: 100%;
-            font-size: 16px;
-            margin-top: 20px;
-            padding: 12px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-sample:hover {
+            background-color: #5a6268;
         }
 
         .btn-print {
-            background-color: #e67e22;
+            background-color: #28a745;
             color: white;
             font-size: 16px;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
+            cursor: pointer;
             width: 100%;
-            margin-top: 20px;
-            padding: 12px;
+            margin-top: 15px;
             display: none;
         }
 
-        /* Packing Slip Output Preview */
-        #slip-preview {
-            display: none;
-            margin-top: 40px;
-            border: 2px dashed #444;
-            padding: 25px;
+        .btn-print:hover {
+            background-color: #218838;
+        }
+
+        #file-info {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        /* Packing Slip Styling */
+        .slips-wrapper {
+            margin-top: 30px;
+        }
+
+        .packing-slip {
             background: #fff;
+            border: 2px solid #222;
+            padding: 20px;
+            margin-bottom: 30px;
+            page-break-after: always;
+            border-radius: 4px;
         }
 
-        .slip-header-table {
-            width: 100%;
+        .slip-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
             border-bottom: 2px solid #000;
             padding-bottom: 10px;
             margin-bottom: 15px;
         }
 
-        .barcode-box {
+        .slip-title {
+            font-size: 22px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin: 0 0 8px 0;
+        }
+
+        .meta-info {
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .barcode-container {
             text-align: right;
         }
 
-        .slip-address-box {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            border: 1px solid #ddd;
-            padding: 12px;
-            margin-bottom: 15px;
-            background: #fafafa;
+        .barcode-container svg {
+            max-width: 220px;
+            height: 50px;
         }
 
-        .slip-items-table {
+        .address-container {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+
+        .address-box {
+            width: 48%;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background-color: #fafafa;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .address-box strong {
+            display: block;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+            color: #1a252f;
+        }
+
+        .items-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
         }
 
-        .slip-items-table th, .slip-items-table td {
+        .items-table th, .items-table td {
             border: 1px solid #333;
             padding: 8px;
             text-align: left;
             font-size: 13px;
         }
 
-        .slip-items-table th {
-            background-color: #eaeaea;
+        .items-table th {
+            background-color: #f0f0f0;
         }
 
-        /* Print CSS for Thermal / Normal Printers */
+        .slip-footer {
+            margin-top: 15px;
+            font-size: 11px;
+            text-align: center;
+            color: #555;
+            border-top: 1px dashed #aaa;
+            padding-top: 8px;
+        }
+
+        /* Print Settings */
         @media print {
-            body * {
-                visibility: hidden;
-            }
-            #slip-preview, #slip-preview * {
-                visibility: visible;
-            }
-            #slip-preview {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                border: none;
+            body {
+                background: white;
                 padding: 0;
             }
-            .btn-print {
+            .no-print {
                 display: none !important;
+            }
+            .container {
+                box-shadow: none;
+                padding: 0;
+                max-width: 100%;
+            }
+            .packing-slip {
+                border: 1px solid #000;
+                margin-bottom: 0;
+                page-break-after: always;
             }
         }
     </style>
@@ -188,176 +238,170 @@
 <body>
 
 <div class="container">
-    <h2>E-Commerce Packing Slip Generator</h2>
+    <div class="no-print">
+        <h1>Bulk Packing Slip Generator</h1>
+        <p class="subtitle">Excel ya CSV file upload karein aur ek saath sabhi orders ke Packing Slips & Barcodes generate karein</p>
 
-    <form id="packingForm">
-        <div class="form-grid">
-            <div class="form-group">
-                <label for="orderNo">Order ID / Reference No.</label>
-                <input type="text" id="orderNo" required placeholder="e.g. ORD-987654">
-            </div>
-
-            <div class="form-group">
-                <label for="awbNo">AWB / Tracking Number (Delhivery/Courier)</label>
-                <input type="text" id="awbNo" required placeholder="e.g. 123456789012">
-            </div>
-
-            <div class="form-group">
-                <label for="courierPartner">Courier Partner</label>
-                <input type="text" id="courierPartner" required placeholder="e.g. Delhivery / Ecom Express / Bluedart">
-            </div>
-
-            <div class="form-group">
-                <label for="orderDate">Order Date</label>
-                <input type="date" id="orderDate" required>
-            </div>
-
-            <div class="form-group">
-                <label for="paymentMode">Payment Mode</label>
-                <select id="paymentMode" required>
-                    <option value="Prepaid">Prepaid</option>
-                    <option value="COD">Cash On Delivery (COD)</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="channel">Sales Channel / Platform</label>
-                <input type="text" id="channel" placeholder="e.g. Website / Browntape / Amazon / Flipkart">
-            </div>
-
-            <div class="form-group full-width">
-                <label for="sellerDetails">Shipper / Seller Address (Dispatch Hub)</label>
-                <textarea id="sellerDetails" rows="3" required placeholder="Warehouse / Store Name, Full Address, GSTIN, Phone"></textarea>
-            </div>
-
-            <div class="form-group full-width">
-                <label for="customerDetails">Shipping / Delivery Address (Customer)</label>
-                <textarea id="customerDetails" rows="3" required placeholder="Customer Name, Street, Landmark, City, State, Pincode, Mobile"></textarea>
-            </div>
+        <div class="upload-section">
+            <label for="excelFile" class="custom-file-upload">
+                📁 Choose CSV / Excel File
+            </label>
+            <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" onchange="handleFile(event)">
+            <button class="btn-sample" onclick="downloadSampleCSV()">📥 Download Sample CSV</button>
+            <div id="file-info"></div>
         </div>
 
-        <div class="items-header">Product List (SKUs)</div>
-        <div id="itemList">
-            <div class="item-row">
-                <input type="text" placeholder="SKU Code" class="item-sku" style="width: 25%;" required>
-                <input type="text" placeholder="Item Name / Description" class="item-name" style="width: 55%;" required>
-                <input type="number" placeholder="Qty" class="item-qty" min="1" value="1" style="width: 20%;" required>
-            </div>
-        </div>
-        <button type="button" class="btn-add" onclick="addItemRow()">+ Add SKU</button>
-
-        <button type="submit" class="btn-submit">Generate Packing Slip & Barcode</button>
-    </form>
-
-    <!-- Generated Slip Output -->
-    <div id="slip-preview">
-        <table class="slip-header-table">
-            <tr>
-                <td>
-                    <h2 style="margin: 0; text-align: left;">PACKING SLIP</h2>
-                    <p style="margin: 3px 0; font-size: 13px;"><strong>Channel:</strong> <span id="outChannel"></span></p>
-                    <p style="margin: 3px 0; font-size: 13px;"><strong>Order ID:</strong> <span id="outOrderNo"></span></p>
-                    <p style="margin: 3px 0; font-size: 13px;"><strong>Date:</strong> <span id="outDate"></span></p>
-                    <p style="margin: 3px 0; font-size: 13px;"><strong>Payment:</strong> <span id="outPayment"></span></p>
-                </td>
-                <td class="barcode-box">
-                    <p style="margin: 0; font-size: 12px; font-weight: bold;">Courier: <span id="outCourier"></span></p>
-                    <svg id="barcode"></svg>
-                </td>
-            </tr>
-        </table>
-
-        <div class="slip-address-box">
-            <div>
-                <strong>SHIPPED FROM (SELLER):</strong>
-                <p id="outSeller" style="white-space: pre-line; margin-top: 5px; font-size: 13px;"></p>
-            </div>
-            <div>
-                <strong>DELIVER TO (CUSTOMER):</strong>
-                <p id="outCustomer" style="white-space: pre-line; margin-top: 5px; font-size: 13px;"></p>
-            </div>
-        </div>
-
-        <table class="slip-items-table">
-            <thead>
-                <tr>
-                    <th style="width: 5%;">#</th>
-                    <th style="width: 25%;">SKU</th>
-                    <th style="width: 55%;">Product Name</th>
-                    <th style="width: 15%; text-align: center;">Qty</th>
-                </tr>
-            </thead>
-            <tbody id="outItemsTable"></tbody>
-        </table>
-
-        <div style="margin-top: 20px; font-size: 11px; text-align: center; border-top: 1px solid #ccc; padding-top: 5px;">
-            <p>Thank you for your business! | Return Policy applies as per terms.</p>
-        </div>
-
-        <button class="btn-print" onclick="window.print()">Print / Save PDF</button>
+        <button id="btnPrint" class="btn-print" onclick="window.print()">🖨️ Print All Packing Slips (PDF)</button>
     </div>
+
+    <!-- Output Area where slips will be generated -->
+    <div id="slipsContainer" class="slips-wrapper"></div>
 </div>
 
 <script>
-    function addItemRow() {
-        const itemContainer = document.getElementById('itemList');
-        const newRow = document.createElement('div');
-        newRow.className = 'item-row';
-        newRow.innerHTML = `
-            <input type="text" placeholder="SKU Code" class="item-sku" style="width: 25%;" required>
-            <input type="text" placeholder="Item Name / Description" class="item-name" style="width: 55%;" required>
-            <input type="number" placeholder="Qty" class="item-qty" min="1" value="1" style="width: 20%;" required>
-        `;
-        itemContainer.appendChild(newRow);
+    // Sample CSV Download function
+    function downloadSampleCSV() {
+        const csvContent = "data:text/csv;charset=utf-8," 
+            + "OrderID,AWB,Courier,OrderDate,PaymentMode,Channel,SellerDetails,CustomerName,CustomerAddress,SKU,ItemName,Qty\n"
+            + "ORD-1001,DEL12345678,Delhivery,2026-08-27,Prepaid,Amazon,\"MyStore Hub, Sector 62, Noida, UP\",Rahul Sharma,\"H.No 45, MG Road, Connaught Place, New Delhi - 110001, Ph: 9876543210\",SKU-BLU-01,Wireless Bluetooth Earbuds,2\n"
+            + "ORD-1002,ECOM98765432,Ecom Express,2026-08-27,COD,Flipkart,\"MyStore Hub, Sector 62, Noida, UP\",Priya Singh,\"Flat 202, Sunshine Apts, M G Road, Bengaluru, Karnataka - 560001, Ph: 9123456789\",SKU-WAT-05,Smart Watch Series 7,1";
+        
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "sample_packing_slips.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     }
 
-    document.getElementById('packingForm').addEventListener('submit', function(e) {
-        e.preventDefault();
+    // Handle File Upload
+    function handleFile(e) {
+        const file = e.target.files[0];
+        if (!file) return;
 
-        const awb = document.getElementById('awbNo').value;
-        const orderNo = document.getElementById('orderNo').value;
+        document.getElementById('file-info').innerText = "File Uploaded: " + file.name;
 
-        document.getElementById('outOrderNo').innerText = orderNo;
-        document.getElementById('outChannel').innerText = document.getElementById('channel').value || 'Direct';
-        document.getElementById('outDate').innerText = document.getElementById('orderDate').value;
-        document.getElementById('outPayment').innerText = document.getElementById('paymentMode').value;
-        document.getElementById('outCourier').innerText = document.getElementById('courierPartner').value;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            // First sheet read
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Convert to JSON
+            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+            
+            generateSlips(jsonData);
+        };
+        reader.readAsArrayBuffer(file);
+    }
 
-        document.getElementById('outSeller').innerText = document.getElementById('sellerDetails').value;
-        document.getElementById('outCustomer').innerText = document.getElementById('customerDetails').value;
+    // Group items by Order ID or generate individual slips
+    function generateSlips(data) {
+        const container = document.getElementById('slipsContainer');
+        container.innerHTML = ''; // clear previous
 
-        // Generate Barcode using AWB Number
-        JsBarcode("#barcode", awb, {
-            format: "CODE128",
-            width: 1.8,
-            height: 50,
-            displayValue: true
+        if (data.length === 0) {
+            alert('File me koi data nahi mila!');
+            return;
+        }
+
+        // Group rows by OrderID
+        const groupedOrders = {};
+        data.forEach(row => {
+            const orderId = row.OrderID || 'N/A';
+            if (!groupedOrders[orderId]) {
+                groupedOrders[orderId] = {
+                    info: row,
+                    items: []
+                };
+            }
+            groupedOrders[orderId].items.push(row);
         });
 
-        // Items mapping
-        const itemsTable = document.getElementById('outItemsTable');
-        itemsTable.innerHTML = '';
+        let index = 0;
+        for (let orderId in groupedOrders) {
+            index++;
+            const order = groupedOrders[orderId];
+            const info = order.info;
+            const barcodeId = "barcode-" + index;
 
-        const itemSkus = document.querySelectorAll('.item-sku');
-        const itemNames = document.querySelectorAll('.item-name');
-        const itemQtys = document.querySelectorAll('.item-qty');
+            const slipHtml = `
+                <div class="packing-slip">
+                    <div class="slip-header">
+                        <div>
+                            <div class="slip-title">Packing Slip</div>
+                            <div class="meta-info">
+                                <strong>Order ID:</strong> ${info.OrderID || 'N/A'}<br>
+                                <strong>Date:</strong> ${info.OrderDate || 'N/A'}<br>
+                                <strong>Channel:</strong> ${info.Channel || 'Direct'}<br>
+                                <strong>Payment:</strong> ${info.PaymentMode || 'Prepaid'}
+                            </div>
+                        </div>
+                        <div class="barcode-container">
+                            <div style="font-size: 12px; font-weight: bold;">Courier: ${info.Courier || 'Standard'}</div>
+                            <svg id="${barcodeId}"></svg>
+                        </div>
+                    </div>
 
-        itemNames.forEach((item, index) => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${index + 1}</td>
-                <td>${itemSkus[index].value}</td>
-                <td>${item.value}</td>
-                <td style="text-align: center;">${itemQtys[index].value}</td>
+                    <div class="address-container">
+                        <div class="address-box">
+                            <strong>Shipped From (Seller):</strong>
+                            <div>${(info.SellerDetails || '').replace(/\n/g, '<br>')}</div>
+                        </div>
+                        <div class="address-box">
+                            <strong>Ship To (Customer):</strong>
+                            <div><strong>${info.CustomerName || ''}</strong></div>
+                            <div>${(info.CustomerAddress || '').replace(/\n/g, '<br>')}</div>
+                        </div>
+                    </div>
+
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 8%;">#</th>
+                                <th style="width: 25%;">SKU</th>
+                                <th style="width: 52%;">Item Description</th>
+                                <th style="width: 15%; text-align: center;">Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${order.items.map((item, i) => `
+                                <tr>
+                                    <td>${i + 1}</td>
+                                    <td>${item.SKU || '-'}</td>
+                                    <td>${item.ItemName || '-'}</td>
+                                    <td style="text-align: center;">${item.Qty || 1}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+
+                    <div class="slip-footer">
+                        Thank you for your order! | Handle with care.
+                    </div>
+                </div>
             `;
-            itemsTable.appendChild(row);
-        });
 
-        document.getElementById('slip-preview').style.display = 'block';
-        document.querySelector('.btn-print').style.display = 'block';
+            container.insertAdjacentHTML('beforeend', slipHtml);
 
-        document.getElementById('slip-preview').scrollIntoView({ behavior: 'smooth' });
-    });
+            // Render Barcode using AWB or OrderID
+            const awbVal = info.AWB || info.OrderID || '00000000';
+            JsBarcode("#" + barcodeId, awbVal, {
+                format: "CODE128",
+                width: 1.6,
+                height: 45,
+                displayValue: true,
+                fontSize: 12
+            });
+        }
+
+        // Show Print Button
+        document.getElementById('btnPrint').style.display = 'block';
+    }
 </script>
 
 </body>
