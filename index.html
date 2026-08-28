@@ -4,12 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Myntra Order Analysis & Styled Excel Generator</title>
-    <!-- XLSX for Reading Files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- ExcelJS & FileSaver for Exporting Exact Styled Excel Files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <!-- JsBarcode library -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
     <style>
@@ -50,7 +47,6 @@
         
         .table-responsive { max-height: 550px; overflow-y: auto; margin-top: 15px; border: 1px solid #000; border-radius: 4px; }
         
-        /* Exact Image UI Styling for Web Preview */
         .excel-preview-table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; font-weight: 600; }
         .excel-preview-table td, .excel-preview-table th { border: 1px solid #000; padding: 6px; }
         .row-dest { background-color: #5b9bd5; color: black; font-weight: bold; }
@@ -81,7 +77,7 @@
 <div class="container">
     <div class="no-print">
         <h1>Myntra Order Analysis & Custom Excel Generator</h1>
-        <p class="subtitle">Upload files, customize Destination Name & PO, and export exact colored Excel reports.</p>
+        <p class="subtitle">Upload files, select Order Number for automatic destination mapping, and export exact colored Excel reports.</p>
 
         <div class="upload-grid">
             <div class="upload-card" onclick="document.getElementById('fileSalesOrder').click()">
@@ -116,8 +112,8 @@
         <div id="controlsArea" class="controls-area">
             <div class="filter-row">
                 <div>
-                    <strong>🏢 Manual Destination Name:</strong>
-                    <input type="text" id="destInput" class="text-input" value="MYNTRA JABONG INDIA PVT LTD (LUHARI)" oninput="updateDestinationName()">
+                    <strong>🏢 Destination Name (Auto):</strong>
+                    <input type="text" id="destInput" class="text-input" value="MYNTRA JABONG INDIA PVT LTD" readonly>
                 </div>
                 <div>
                     <strong>📋 Select Order Number:</strong>
@@ -127,7 +123,7 @@
                 </div>
                 <div>
                     <strong>🔎 Search Data:</strong>
-                    <input type="text" id="searchInput" class="search-box" placeholder="Search SKU Code, Barcode..." onkeyup="filterOrders()">
+                    <input type="text" id="searchInput" class="search-box" placeholder="Search SKU Code, Barcode..." onkeyup="debounceFilter()">
                 </div>
             </div>
             
@@ -147,6 +143,9 @@
     let datasets = { sales: [], po: [], poBarCode: '', challan: [], saleItem: [] };
     let globalMergedData = [];
     let currentDisplayedData = [];
+    let salesOrderLookup = {};
+    let rateLookup = {};
+    let filterDebounceTimer = null;
 
     function cleanKey(val) {
         if (!val) return '';
@@ -191,7 +190,7 @@
         let headerIdx = 0;
         for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
             let rowStr = rawJson[i].map(c => String(c)).join(' ');
-            if (rowStr.includes('BARCODE') || rowStr.includes('Order No') || rowStr.includes('REMARKS') || rowStr.includes('INVOICE_NO')) {
+            if (rowStr.includes('BARCODE') || rowStr.includes('Order No') || rowStr.includes('REMARKS') || rowStr.includes('INVOICE_NO') || rowStr.includes('Customer Name')) {
                 headerIdx = i;
                 break;
             }
@@ -232,24 +231,46 @@
     }
 
     function processAllData() {
-        let orderSelect = document.getElementById('orderSelect');
-        let orderMap = {};
+        salesOrderLookup = {};
+        rateLookup = {};
 
-        if (datasets.sales.length > 0) {
-            datasets.sales.forEach(row => {
-                let ordNo = row['Order No'] || row['ORDER_NO'] || row['DOC No'] || '';
-                if (ordNo && ordNo !== 'Order No') orderMap[ordNo] = true;
+        // Build Sale Item Wise Rate Lookup (Gross Amount / Sale Qty)
+        if (datasets.saleItem.length > 0) {
+            datasets.saleItem.forEach(row => {
+                let code = cleanKey(row['BARCODE'] || row['Barcode'] || row['ITEM CODE'] || row['Item Code'] || row['EAN'] || '');
+                let grossAmt = parseFloat(row['GROSS AMOUNT'] || row['Gross Amount'] || row['GROSS_AMT'] || 0);
+                let saleQty = parseFloat(row['SALE QTY'] || row['Sale Qty'] || row['QTY'] || row['Quantity'] || 0);
+                
+                if (code) {
+                    let calculatedRate = (saleQty > 0 && grossAmt > 0) ? (grossAmt / saleQty).toFixed(2) : 0;
+                    rateLookup[code] = calculatedRate;
+                }
             });
         }
 
-        orderSelect.innerHTML = '<option value="">-- Choose Order Number --</option>';
-        Object.keys(orderMap).forEach(ord => {
-            orderSelect.innerHTML += `<option value="${ord}">${ord}</option>`;
-        });
+        // Build Sales Order Lookup (Customer Name by Order No)
+        let orderSelect = document.getElementById('orderSelect');
+        let orderOptionsHtml = '<option value="">-- Choose Order Number --</option>';
 
+        if (datasets.sales.length > 0) {
+            datasets.sales.forEach(row => {
+                let ordNo = String(row['Order No'] || row['ORDER_NO'] || row['DOC No'] || '').trim();
+                let custName = row['Customer Name'] || row['CUSTOMER NAME'] || row['Customer'] || '';
+                
+                if (ordNo && ordNo !== 'Order No') {
+                    salesOrderLookup[ordNo] = custName;
+                }
+            });
+
+            Object.keys(salesOrderLookup).forEach(ord => {
+                orderOptionsHtml += `<option value="${ord}">${ord}</option>`;
+            });
+        }
+
+        orderSelect.innerHTML = orderOptionsHtml;
         document.getElementById('controlsArea').style.display = 'block';
 
-        if (Object.keys(orderMap).length > 0) {
+        if (Object.keys(salesOrderLookup).length > 0) {
             orderSelect.selectedIndex = 1;
             onOrderSelected();
         } else if (datasets.challan.length > 0 || datasets.po.length > 0) {
@@ -259,8 +280,13 @@
 
     function onOrderSelected() {
         let selectedOrder = document.getElementById('orderSelect').value;
-        let poLookup = {};
+        
+        // Auto-update Destination Name from Sales Order Wise Report
+        if (selectedOrder && salesOrderLookup[selectedOrder]) {
+            document.getElementById('destInput').value = salesOrderLookup[selectedOrder];
+        }
 
+        let poLookup = {};
         datasets.po.forEach(row => {
             let skuCode = cleanKey(row['SKU Code']);
             let gtin = cleanKey(row['GTIN'] || row['BARCODE']);
@@ -275,6 +301,11 @@
         let sourceRows = datasets.challan.length > 0 ? datasets.challan : datasets.po;
 
         sourceRows.forEach(row => {
+            let rowOrderNo = String(row['Order No'] || row['ORDER_NO'] || row['DOC No'] || '').trim();
+            if (selectedOrder && rowOrderNo && rowOrderNo !== selectedOrder) {
+                return; // Filter out rows that do not match selected Order No
+            }
+
             let size = row['SIZE'] || row['Size'] || '-';
             let itemCode = row['ITEM_NAME'] || row['ITEM CODE'] || row['Item Code'] || '-';
             let itemDepartment = row['DEPARTMENT'] || row['Department'] || row['ITEAM NAME'] || '-';
@@ -282,11 +313,17 @@
             let eanCode = row['BARCODE'] || row['Barcode'] || row['GTIN'] || row['Ean code'] || '-';
             let qty = parseFloat(row['CHALLAN_QUANTITY'] || row['QTY'] || row['Quantity'] || 1);
             let mrp = parseFloat(row['MRP'] || row['Mrp'] || 0);
-            let rate = (qty > 0 && mrp > 0) ? (mrp / qty).toFixed(2) : 0;
+            
+            // Box number directly from REMARKS in Delivery Challan
             let boxNum = row['REMARKS'] || row['Remarks'] || row['box nu'] || row['Box No'] || '-';
             let invoiceNo = row['Invoice Number'] || row['INVOICE_NO'] || 'SMTS26-27-000298';
 
             let cleanEan = cleanKey(eanCode);
+            let cleanItemCode = cleanKey(itemCode);
+            
+            // Rate calculation from Sale Report Item Wise
+            let rate = rateLookup[cleanEan] || rateLookup[cleanItemCode] || ((qty > 0 && mrp > 0) ? (mrp / qty).toFixed(2) : 0);
+
             let poInfo = poLookup[cleanEan] || {
                 skuCode: row['SKU Code'] || '-',
                 styleId: row['Style Id'] || '-',
@@ -317,52 +354,15 @@
         generateSlips(finalRows);
     }
 
-    function updateDestinationName() {
-        renderSummaryTable(currentDisplayedData);
-    }
-
     function renderSummaryTable(data) {
         let poDisplay = datasets.poBarCode || document.getElementById('orderSelect').value || 'MYNJ-SAPL210826-4';
-        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD (LUHARI)';
+        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD';
         let totalQty = data.reduce((sum, item) => sum + item.qty, 0);
 
-        let html = `
-            <table class="excel-preview-table">
-                <!-- Top Row 1: Manual Destination -->
-                <tr>
-                    <td class="row-dest" style="width: 150px;">SHIP TO/DESTINATION</td>
-                    <td colspan="12" class="row-myntra">${destName}</td>
-                </tr>
-                <!-- Row 2: PO appears ONLY ONCE at top header -->
-                <tr style="background:#ffffff; font-weight:bold;">
-                    <td style="background:#f2f2f2;">po</td>
-                    <td colspan="4" style="text-align:left; padding-left:10px;">${poDisplay}</td>
-                    <td colspan="2" style="text-align:right;">G.TOTAL</td>
-                    <td></td>
-                    <td>${totalQty}</td>
-                    <td colspan="4"></td>
-                </tr>
-                <!-- Yellow Header Row 3 -->
-                <tr class="row-yellow-hdr">
-                    <td>SKU Code</td>
-                    <td>Style Id</td>
-                    <td>SKU Id</td>
-                    <td>SIZE</td>
-                    <td>ITEM CODE</td>
-                    <td>ITEAM NAME</td>
-                    <td>color</td>
-                    <td>Ean code</td>
-                    <td>QTY</td>
-                    <td>MRP</td>
-                    <td>RATE</td>
-                    <td>box num</td>
-                    <td>Invoice Number</td>
-                </tr>
-                <tbody>
-        `;
-
-        data.forEach(item => {
-            html += `
+        let rowsHtml = '';
+        for (let i = 0; i < data.length; i++) {
+            let item = data[i];
+            rowsHtml += `
                 <tr class="row-data">
                     <td style="text-align:left;">${item.skuCode}</td>
                     <td>${item.styleId}</td>
@@ -379,26 +379,65 @@
                     <td>${item.invoiceNo}</td>
                 </tr>
             `;
-        });
+        }
 
-        html += `</tbody></table>`;
+        let html = `
+            <table class="excel-preview-table">
+                <tr>
+                    <td class="row-dest" style="width: 150px;">SHIP TO/DESTINATION</td>
+                    <td colspan="12" class="row-myntra">${destName}</td>
+                </tr>
+                <tr style="background:#ffffff; font-weight:bold;">
+                    <td style="background:#f2f2f2;">po</td>
+                    <td colspan="4" style="text-align:left; padding-left:10px;">${poDisplay}</td>
+                    <td colspan="2" style="text-align:right;">G.TOTAL</td>
+                    <td></td>
+                    <td>${totalQty}</td>
+                    <td colspan="4"></td>
+                </tr>
+                <tr class="row-yellow-hdr">
+                    <td>SKU Code</td>
+                    <td>Style Id</td>
+                    <td>SKU Id</td>
+                    <td>SIZE</td>
+                    <td>ITEM CODE</td>
+                    <td>ITEAM NAME</td>
+                    <td>color</td>
+                    <td>Ean code</td>
+                    <td>QTY</td>
+                    <td>MRP</td>
+                    <td>RATE</td>
+                    <td>box num</td>
+                    <td>Invoice Number</td>
+                </tr>
+                <tbody>${rowsHtml}</tbody>
+            </table>
+        `;
         document.getElementById('summaryTableContainer').innerHTML = html;
+    }
+
+    function debounceFilter() {
+        clearTimeout(filterDebounceTimer);
+        filterDebounceTimer = setTimeout(filterOrders, 250);
     }
 
     function filterOrders() {
         const query = document.getElementById('searchInput').value.toLowerCase().trim();
-        const filtered = globalMergedData.filter(item => {
-            return String(item.skuCode).toLowerCase().includes(query) ||
-                   String(item.styleId).toLowerCase().includes(query) ||
-                   String(item.skuId).toLowerCase().includes(query) ||
-                   String(item.itemCode).toLowerCase().includes(query) ||
-                   String(item.eanCode).toLowerCase().includes(query) ||
-                   String(item.boxNum).toLowerCase().includes(query);
-        });
+        if (!query) {
+            currentDisplayedData = globalMergedData;
+        } else {
+            currentDisplayedData = globalMergedData.filter(item => {
+                return String(item.skuCode).toLowerCase().includes(query) ||
+                       String(item.styleId).toLowerCase().includes(query) ||
+                       String(item.skuId).toLowerCase().includes(query) ||
+                       String(item.itemCode).toLowerCase().includes(query) ||
+                       String(item.eanCode).toLowerCase().includes(query) ||
+                       String(item.boxNum).toLowerCase().includes(query);
+            });
+        }
 
-        currentDisplayedData = filtered;
-        renderSummaryTable(filtered);
-        generateSlips(filtered);
+        renderSummaryTable(currentDisplayedData);
+        generateSlips(currentDisplayedData);
     }
 
     function generateSlips(data) {
@@ -416,12 +455,15 @@
         });
 
         let idx = 0;
+        let fullSlipsHtml = '';
+        let barcodeQueue = [];
+
         for (let boxNo in grouped) {
             idx++;
             const items = grouped[boxNo];
             const barcodeId = "barcode-" + idx;
 
-            const slipHtml = `
+            fullSlipsHtml += `
                 <div class="packing-slip">
                     <div class="slip-header">
                         <div>
@@ -462,17 +504,20 @@
                     </table>
                 </div>
             `;
+            barcodeQueue.push(barcodeId);
+        }
 
-            container.insertAdjacentHTML('beforeend', slipHtml);
+        container.innerHTML = fullSlipsHtml;
 
-            JsBarcode("#" + barcodeId, String(poDisplay), {
+        barcodeQueue.forEach(id => {
+            JsBarcode("#" + id, String(poDisplay), {
                 format: "CODE128",
                 width: 1.5,
                 height: 40,
                 displayValue: true,
                 fontSize: 12
             });
-        }
+        });
     }
 
     async function exportExactStyledExcel() {
@@ -482,17 +527,15 @@
         const worksheet = workbook.addWorksheet('Matched Report');
 
         let poDisplay = datasets.poBarCode || document.getElementById('orderSelect').value || 'MYNJ-SAPL210826-4';
-        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD (LUHARI)';
+        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD';
         let totalQty = currentDisplayedData.reduce((sum, item) => sum + item.qty, 0);
 
-        // Column Widths
         worksheet.columns = [
             { width: 24 }, { width: 14 }, { width: 14 }, { width: 18 },
             { width: 16 }, { width: 16 }, { width: 14 }, { width: 18 },
             { width: 8 },  { width: 10 }, { width: 12 }, { width: 10 }, { width: 22 }
         ];
 
-        // Row 1: Top Banner with Manual Destination Name
         const row1 = worksheet.addRow(['SHIP TO/DESTINATION', destName, '', '', '', '', '', '', '', '', '', '', '']);
         worksheet.mergeCells('B1:M1');
         
@@ -504,7 +547,6 @@
         row1.getCell(2).font = { bold: true, size: 13, color: { argb: 'FF000000' } };
         row1.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
 
-        // Row 2: Single PO display at top row
         const row2 = worksheet.addRow(['po', poDisplay, '', '', '', '', 'G.TOTAL', '', totalQty, '', '', '', '']);
         worksheet.mergeCells('B2:E2');
         worksheet.mergeCells('G2:H2');
@@ -516,7 +558,6 @@
         row2.getCell(9).font = { bold: true };
         row2.getCell(9).alignment = { horizontal: 'center' };
 
-        // Row 3: Bright Yellow Header Row
         const headers = ['SKU Code', 'Style Id', 'SKU Id', 'SIZE', 'ITEM CODE', 'ITEAM NAME', 'color', 'Ean code', 'QTY', 'MRP', 'RATE', 'box num', 'Invoice Number'];
         const row3 = worksheet.addRow(headers);
         
@@ -526,7 +567,6 @@
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
         });
 
-        // Data Rows (Without PO repeating)
         currentDisplayedData.forEach(item => {
             const dataRow = worksheet.addRow([
                 item.skuCode,
@@ -549,7 +589,6 @@
             dataRow.getCell(12).alignment = { horizontal: 'center' };
         });
 
-        // Gridlines / Borders
         worksheet.eachRow((row) => {
             row.eachCell((cell) => {
                 cell.border = {
@@ -561,7 +600,6 @@
             });
         });
 
-        // Download Excel File
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         saveAs(blob, `Myntra_Report_${poDisplay}.xlsx`);
