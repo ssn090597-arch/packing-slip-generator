@@ -3,164 +3,402 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Myntra Order Analysis & Styled Excel Generator</title>
-    <!-- XLSX for Reading Files -->
+    <title>Myntra Order Analysis & Custom Excel Generator</title>
+    
+    <!-- Google Fonts & Font Awesome Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- XLSX, ExcelJS, FileSaver & Barcode Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- ExcelJS & FileSaver for Exporting Exact Styled Excel Files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <!-- JsBarcode library -->
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
     <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #f0f2f5; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 1400px; margin: 0 auto; background: #ffffff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        h1 { text-align: center; color: #1a252f; margin-bottom: 5px; }
-        p.subtitle { text-align: center; color: #666; margin-bottom: 25px; font-size: 14px; }
-        
-        .upload-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
+        :root {
+            --sidebar-bg: #030816;
+            --sidebar-hover: #0d1629;
+            --primary-blue: #1b63f3;
+            --bg-body: #f3f5f9;
+            --card-bg: #ffffff;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
         }
 
-        .upload-card {
-            border: 2px dashed #007bff;
-            background-color: #f8f9fa;
+        * { box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; padding: 0; }
+        body { background-color: var(--bg-body); color: var(--text-dark); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+        /* Sidebar Styling */
+        .sidebar {
+            width: 260px;
+            background-color: var(--sidebar-bg);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px 15px;
+            flex-shrink: 0;
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 5px;
+            margin-bottom: 25px;
+        }
+        .brand-logo img { height: 36px; }
+        .brand-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; }
+        .brand-sub { font-size: 11px; color: #3b82f6; font-weight: 600; margin-top: 3px; }
+
+        .nav-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+        .nav-item a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: #94a3b8;
+            text-decoration: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+        .nav-item.active a, .nav-item a:hover {
+            background-color: var(--primary-blue);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(27, 99, 243, 0.35);
+        }
+
+        .system-status {
+            background: linear-gradient(135deg, #091326 0%, #030816 100%);
+            border: 1px solid #1e293b;
+            border-radius: 12px;
             padding: 15px;
-            text-align: center;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: 0.3s;
+            margin-top: 20px;
         }
-        .upload-card:hover { background-color: #e9ecef; border-color: #0056b3; }
-        .upload-card h4 { margin: 0 0 8px 0; color: #007bff; font-size: 14px; }
-        .upload-card p { margin: 5px 0 0 0; font-size: 12px; color: #28a745; word-break: break-all; font-weight: bold; }
-        input[type="file"] { display: none; }
-
-        .controls-area { display: none; margin-top: 20px; background: #eef2f7; padding: 18px; border-radius: 8px; border: 1px solid #cbd5e1; }
-        .select-box, .search-box, .text-input { width: 100%; padding: 10px 12px; font-size: 14px; border: 1px solid #ced4da; border-radius: 5px; margin-top: 6px; }
-        .filter-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 15px; }
-        
-        .status-card {
-            margin-top: 10px;
+        .status-header { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: #fff; }
+        .status-indicator { width: 8px; height: 8px; background-color: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; }
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
             padding: 12px;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 15px;
+            background-color: #0b1324;
+            border-radius: 12px;
+            margin-top: 15px;
+            border: 1px solid #1e293b;
+        }
+        .avatar { width: 36px; height: 36px; background: #2563eb; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+
+        /* Main Area */
+        .main-wrapper { flex: 1; padding: 25px 35px; overflow-y: auto; }
+        
+        .top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .top-title h1 { font-size: 24px; font-weight: 800; color: #0f172a; }
+        .top-title p { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+        
+        .header-widgets { display: flex; align-items: center; gap: 15px; }
+        .date-badge {
+            background: #fff;
+            padding: 8px 16px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+            font-size: 13px;
+            font-weight: 700;
+        }
+        .notif-btn { background: #fff; border: 1px solid var(--border-color); padding: 10px 12px; border-radius: 10px; cursor: pointer; position: relative; }
+        .notif-badge { position: absolute; top: -3px; right: -3px; background: #ef4444; color: #fff; font-size: 10px; padding: 2px 5px; border-radius: 10px; font-weight: 800; }
+
+        /* Cards Grid */
+        .cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 25px; }
+        .upload-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            position: relative;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .card-num { position: absolute; top: 15px; right: 20px; font-size: 20px; font-weight: 800; color: var(--primary-blue); opacity: 0.8; }
+        .card-icon { width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 12px; }
+        
+        .c1 .card-icon { background: #eff6ff; color: #2563eb; }
+        .c2 .card-icon { background: #ecfdf5; color: #059669; }
+        .c3 .card-icon { background: #fff7ed; color: #ea580c; }
+        .c4 .card-icon { background: #f5f3ff; color: #7c3aed; }
+
+        .card-title { font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 15px; min-height: 38px; display: flex; align-items: center; }
+        .btn-upload {
+            background: var(--primary-blue);
+            color: #fff;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            justify-content: center;
+        }
+        .c2 .btn-upload { background: #10b981; }
+        .c3 .btn-upload { background: #f97316; }
+        .c4 .btn-upload { background: #8b5cf6; }
+
+        .file-status { margin-top: 12px; font-size: 11px; font-weight: 600; color: #10b981; word-break: break-all; }
+
+        /* Filter Panel */
+        .filter-section {
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            padding: 22px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            margin-bottom: 25px;
+        }
+        .filter-header {
+            background: var(--primary-blue);
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 16px;
+            border-radius: 8px 8px 8px 0;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 18px;
+        }
+        .filter-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 18px; }
+        .form-group label { font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .form-control {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #1e293b;
+            background: #f8fafc;
+        }
+
+        /* Status Alert Banner */
+        .status-banner {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 10px;
+            padding: 12px 18px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            margin-bottom: 20px;
         }
-        .status-complete { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .status-pending { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .status-left { display: flex; align-items: center; gap: 12px; color: #dc2626; font-weight: 800; font-size: 14px; }
+        .status-badge-num { background: #dc2626; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
+        .status-right { font-size: 13px; font-weight: 700; color: #991b1b; }
 
-        .btn-action { display: inline-block; margin: 10px 5px 0 0; padding: 10px 18px; color: white; border-radius: 5px; font-size: 14px; font-weight: bold; cursor: pointer; border: none; }
-        .btn-green { background-color: #28a745; }
-        .btn-blue { background-color: #17a2b8; }
+        /* Action Buttons Grid */
+        .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn-main {
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: none;
+            color: #fff;
+            font-weight: 700;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+        }
+        .btn-excel { background: #059669; }
+        .btn-print { background: #1d4ed8; }
+
+        /* Table Styling */
+        .table-card { background: #fff; border-radius: 12px; border: 1px solid #000; overflow: hidden; }
+        .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; }
+        .excel-table th, .excel-table td { border: 1px solid #000; padding: 8px; font-weight: 600; }
         
-        .table-responsive { max-height: 550px; overflow-y: auto; margin-top: 15px; border: 1px solid #000; border-radius: 4px; }
-        
-        .excel-preview-table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; font-weight: 600; }
-        .excel-preview-table td, .excel-preview-table th { border: 1px solid #000; padding: 6px; }
-        .row-dest { background-color: #5b9bd5; color: black; font-weight: bold; }
-        .row-myntra { background-color: #46b2c4; color: black; font-weight: bold; font-size: 14px; text-transform: uppercase; }
-        .row-yellow-hdr { background-color: #ffc000; color: black; font-weight: bold; }
-        .row-data:nth-child(even) { background-color: #ffffff; }
-        .row-data:nth-child(odd) { background-color: #f9f9f9; }
+        .row-dest-hdr { background: #002060; color: #fff; font-weight: 800; font-size: 12px; }
+        .row-po-hdr { background: #ffffff; font-weight: 800; color: #000; }
+        .row-yellow-hdr { background: #0a192f; color: #fff; font-weight: 700; text-transform: uppercase; }
 
-        .slips-wrapper { margin-top: 30px; display: none; }
-        .packing-slip { background: #fff; border: 2px solid #222; padding: 20px; margin-bottom: 30px; page-break-after: always; border-radius: 4px; }
-        .slip-header { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
-        .slip-title { font-size: 20px; font-weight: bold; text-transform: uppercase; }
-        .barcode-container svg { max-width: 220px; height: 45px; }
-        .items-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        .items-table th, .items-table td { border: 1px solid #333; padding: 8px; text-align: left; font-size: 12px; }
-        .items-table th { background-color: #f0f0f0; }
+        .loading-overlay { display: none; text-align: center; font-weight: 700; color: var(--primary-blue); padding: 10px; }
 
-        .loading-overlay { display: none; text-align: center; font-weight: bold; color: #007bff; margin: 10px 0; }
-
+        .slips-wrapper { display: none; }
         @media print {
             body { background: white; padding: 0; }
             .no-print { display: none !important; }
-            .container { box-shadow: none; padding: 0; max-width: 100%; }
             .slips-wrapper { display: block !important; }
-            .packing-slip { border: 1px solid #000; margin-bottom: 0; page-break-after: always; }
         }
     </style>
 </head>
 <body>
 
-<div class="container">
+<div class="sidebar no-print">
+    <div>
+        <div class="brand-logo">
+            <i class="fa-solid fa-m" style="font-size: 28px; color: #ff3f6c;"></i>
+            <div>
+                <div class="brand-title">Myntra</div>
+                <div class="brand-sub">Order Suite</div>
+            </div>
+        </div>
+
+        <ul class="nav-list">
+            <li class="nav-item active"><a href="#"><i class="fa-solid fa-house"></i> Dashboard</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-file-invoice"></i> Sales Orders</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-boxes-packing"></i> Myntra PO</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-truck-ramp-box"></i> Challan (Pending)</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-chart-line"></i> Sale Report</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-folder-open"></i> Reports</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-chart-pie"></i> Analytics</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-circle-question"></i> Help & Support</a></li>
+        </ul>
+    </div>
+
+    <div>
+        <div class="system-status">
+            <div class="status-header">
+                <div class="status-indicator"></div>
+                System Status
+            </div>
+            <p style="font-size:11px; color:#64748b; margin-top:4px;">All Systems Operational</p>
+        </div>
+
+        <div class="user-profile">
+            <div class="avatar">AD</div>
+            <div>
+                <div style="font-size:12px; font-weight:700; color:#fff;">Admin User</div>
+                <div style="font-size:10px; color:#64748b;">admin@myntra.com</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="main-wrapper">
     <div class="no-print">
-        <h1>Myntra Order Analysis & Custom Excel Generator</h1>
-        <p class="subtitle">Fast & Lightweight Order Processing Dashboard</p>
+        <div class="top-header">
+            <div class="top-title">
+                <h1>Myntra Order Analysis & Custom Excel Generator</h1>
+                <p>Fast & Lightweight Order Processing Dashboard</p>
+            </div>
+            <div class="header-widgets">
+                <div class="date-badge">
+                    <i class="fa-regular fa-calendar-days" style="color:var(--primary-blue);"></i>
+                    <span id="currentDateDisplay">29 August 2026 | 01:41 PM</span>
+                </div>
+                <button class="notif-btn">
+                    <i class="fa-regular fa-bell"></i>
+                    <span class="notif-badge">3</span>
+                </button>
+            </div>
+        </div>
 
-        <div class="upload-grid">
-            <div class="upload-card" onclick="document.getElementById('fileSalesOrder').click()">
-                <h4>1. Sales Order Wise Report</h4>
-                <span>📁 Select File</span>
-                <input type="file" id="fileSalesOrder" accept=".xlsx, .xls, .csv" onchange="loadIndividualFile(event, 'sales')">
-                <p id="msg-sales"></p>
+        <!-- 4 Upload Cards -->
+        <div class="cards-grid">
+            <div class="upload-card c1" onclick="document.getElementById('fileSalesOrder').click()">
+                <span class="card-num">01</span>
+                <div class="card-icon"><i class="fa-regular fa-file-lines"></i></div>
+                <div class="card-title">Sales Order Wise Report</div>
+                <button class="btn-upload"><i class="fa-solid fa-folder-open"></i> Select File</button>
+                <input type="file" id="fileSalesOrder" accept=".xlsx, .xls, .csv" style="display:none" onchange="loadIndividualFile(event, 'sales')">
+                <div id="msg-sales" class="file-status"></div>
             </div>
 
-            <div class="upload-card" onclick="document.getElementById('filePO').click()">
-                <h4>2. Myntra PO File</h4>
-                <span>📁 Select File</span>
-                <input type="file" id="filePO" accept=".xlsx, .xls, .csv" onchange="loadIndividualFile(event, 'po')">
-                <p id="msg-po"></p>
+            <div class="upload-card c2" onclick="document.getElementById('filePO').click()">
+                <span class="card-num">02</span>
+                <div class="card-icon"><i class="fa-solid fa-clipboard-check"></i></div>
+                <div class="card-title">Myntra PO File</div>
+                <button class="btn-upload"><i class="fa-solid fa-folder-open"></i> Select File</button>
+                <input type="file" id="filePO" accept=".xlsx, .xls, .csv" style="display:none" onchange="loadIndividualFile(event, 'po')">
+                <div id="msg-po" class="file-status"></div>
             </div>
 
-            <div class="upload-card" onclick="document.getElementById('fileChallan').click()">
-                <h4>3. Delivery Challan (Pending Box)</h4>
-                <span>📁 Select File</span>
-                <input type="file" id="fileChallan" accept=".xlsx, .xls, .csv" onchange="loadIndividualFile(event, 'challan')">
-                <p id="msg-challan"></p>
+            <div class="upload-card c3" onclick="document.getElementById('fileChallan').click()">
+                <span class="card-num">03</span>
+                <div class="card-icon"><i class="fa-solid fa-truck-fast"></i></div>
+                <div class="card-title">Delivery Challan (Pending Box)</div>
+                <button class="btn-upload"><i class="fa-solid fa-folder-open"></i> Select File</button>
+                <input type="file" id="fileChallan" accept=".xlsx, .xls, .csv" style="display:none" onchange="loadIndividualFile(event, 'challan')">
+                <div id="msg-challan" class="file-status"></div>
             </div>
 
-            <div class="upload-card" onclick="document.getElementById('fileSaleItem').click()">
-                <h4>4. Sale Report Item Wise</h4>
-                <span>📁 Select File</span>
-                <input type="file" id="fileSaleItem" accept=".xlsx, .xls, .csv" onchange="loadIndividualFile(event, 'saleItem')">
-                <p id="msg-saleItem"></p>
+            <div class="upload-card c4" onclick="document.getElementById('fileSaleItem').click()">
+                <span class="card-num">04</span>
+                <div class="card-icon"><i class="fa-solid fa-chart-column"></i></div>
+                <div class="card-title">Sale Report Item Wise</div>
+                <button class="btn-upload"><i class="fa-solid fa-folder-open"></i> Select File</button>
+                <input type="file" id="fileSaleItem" accept=".xlsx, .xls, .csv" style="display:none" onchange="loadIndividualFile(event, 'saleItem')">
+                <div id="msg-saleItem" class="file-status"></div>
             </div>
         </div>
 
         <div id="loadingOverlay" class="loading-overlay">⏳ Processing Data... Please wait.</div>
 
-        <div id="controlsArea" class="controls-area">
+        <!-- Quick Filters -->
+        <div class="filter-section">
+            <div class="filter-header"><i class="fa-solid fa-filter"></i> Quick Filters</div>
+            
             <div class="filter-row">
-                <div>
-                    <strong>🏢 Destination Name (Auto):</strong>
-                    <input type="text" id="destInput" class="text-input" value="MYNTRA JABONG INDIA PVT LTD (LUHARI)" readonly>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-location-dot" style="color:var(--primary-blue);"></i> Destination Name (Auto)</label>
+                    <input type="text" id="destInput" class="form-control" value="MYNTRA JABONG INDIA PVT LTD (BHIWANDI, THANE)" readonly>
                 </div>
-                <div>
-                    <strong>📋 Select Order Number:</strong>
-                    <select id="orderSelect" class="select-box" onchange="onOrderSelected()">
-                        <option value="">-- Choose Order Number --</option>
+                <div class="form-group">
+                    <label><i class="fa-solid fa-list-check" style="color:var(--primary-blue);"></i> Select Order Number</label>
+                    <select id="orderSelect" class="form-control" onchange="onOrderSelected()">
+                        <option value="">SMTS000340/26-27</option>
                     </select>
                 </div>
-                <div>
-                    <strong>🔎 Search Data:</strong>
-                    <input type="text" id="searchInput" class="search-box" placeholder="Search SKU Code, Barcode..." onkeyup="debounceFilter()">
+                <div class="form-group">
+                    <label><i class="fa-solid fa-magnifying-glass" style="color:var(--primary-blue);"></i> Search Data</label>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Search SKU Code, Barcode..." onkeyup="debounceFilter()">
                 </div>
             </div>
 
-            <!-- Packing Status Dashboard Badge -->
-            <div id="statusBadge" class="status-card status-pending" style="display: none;">
-                <span id="statusText">Order Packing Status: Calculating...</span>
-                <span id="statusQty">Target Qty vs Packed Qty</span>
+            <div id="statusBadge" class="status-banner">
+                <div class="status-left">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>ORDER IS PENDING</span>
+                    <span id="remQtyBadge" class="status-badge-num">955 Qty Remaining</span>
+                </div>
+                <div id="statusQty" class="status-right">
+                    Required Order Qty: 955 &nbsp;|&nbsp; Packed Challan Qty: 0
+                </div>
             </div>
-            
-            <div>
-                <button class="btn-action btn-green" onclick="exportExactStyledExcel()">📊 Export Matched Excel Report</button>
-                <button class="btn-action btn-blue" onclick="prepareAndPrintSlips()">🖨️ Print Packing Slips</button>
+
+            <div class="action-row">
+                <button class="btn-main btn-excel" onclick="exportExactStyledExcel()">
+                    <i class="fa-solid fa-file-excel" style="font-size:20px;"></i>
+                    <div>
+                        <div>Export Matched Excel Report</div>
+                        <div style="font-size:10px; opacity:0.8;">Download Excel Report</div>
+                    </div>
+                </button>
+                <button class="btn-main btn-print" onclick="prepareAndPrintSlips()">
+                    <i class="fa-solid fa-print" style="font-size:20px;"></i>
+                    <div>
+                        <div>Print Packing Slips</div>
+                        <div style="font-size:10px; opacity:0.8;">Print Packing Slips</div>
+                    </div>
+                </button>
             </div>
         </div>
 
-        <div id="summaryTableContainer" class="table-responsive"></div>
+        <div id="summaryTableContainer" class="table-card"></div>
     </div>
 
     <div id="slipsContainer" class="slips-wrapper"></div>
@@ -173,7 +411,6 @@
     let salesOrderLookup = {};
     let salesOrderReqQty = {};
     let rateLookup = {};
-    let filterDebounceTimer = null;
 
     function cleanKey(val) {
         if (!val) return '';
@@ -189,7 +426,7 @@
                 return String(row[key] || '').trim();
             }
         }
-        return String(row['Sale Order No'] || row['Sale Order No.'] || row['Order No'] || row['ORDER_NO'] || row['DOC No'] || '').trim();
+        return String(row['Sale Order No'] || row['Sale Order No.'] || row['Order No'] || row['ORDER_NO'] || '').trim();
     }
 
     function parsePOFile(worksheet) {
@@ -229,7 +466,7 @@
         let headerIdx = 0;
         for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
             let rowStr = rawJson[i].map(c => String(c)).join(' ');
-            if (rowStr.includes('BARCODE') || rowStr.includes('Order No') || rowStr.includes('Sale Order') || rowStr.includes('REMARKS') || rowStr.includes('Customer Name') || rowStr.includes('GROSS AMOUNT')) {
+            if (rowStr.includes('BARCODE') || rowStr.includes('Order No') || rowStr.includes('Sale Order') || rowStr.includes('REMARKS') || rowStr.includes('Customer Name')) {
                 headerIdx = i;
                 break;
             }
@@ -253,7 +490,7 @@
         if (!file) return;
 
         document.getElementById('loadingOverlay').style.display = 'block';
-        document.getElementById('msg-' + type).innerText = '⌛ Processing...';
+        document.getElementById('msg-' + type).innerText = '⌛ Loaded: ' + file.name;
 
         setTimeout(() => {
             const reader = new FileReader();
@@ -268,7 +505,6 @@
                     datasets[type] = parseSheetSmartly(firstSheet);
                 }
                 
-                document.getElementById('msg-' + type).innerText = '✓ Loaded: ' + file.name;
                 document.getElementById('loadingOverlay').style.display = 'none';
                 processAllData();
             };
@@ -281,36 +517,32 @@
         salesOrderReqQty = {};
         rateLookup = {};
 
-        // 1. Calculate Rate from Sale Report Item Wise
         if (datasets.saleItem.length > 0) {
             datasets.saleItem.forEach(row => {
-                let code = cleanKey(row['BARCODE'] || row['Barcode'] || row['ITEM CODE'] || row['Item Code'] || row['EAN'] || '');
-                let grossAmt = parseFloat(row['GROSS AMOUNT'] || row['Gross Amount'] || row['GROSS_AMT'] || 0);
-                let saleQty = parseFloat(row['SALE QTY'] || row['Sale Qty'] || row['QTY'] || row['Quantity'] || 1);
+                let code = cleanKey(row['BARCODE'] || row['Barcode'] || row['ITEM CODE'] || '');
+                let grossAmt = parseFloat(row['GROSS AMOUNT'] || row['Gross Amount'] || 0);
+                let saleQty = parseFloat(row['SALE QTY'] || row['Sale Qty'] || 1);
                 
                 if (code) {
-                    let calculatedRate = (saleQty > 0 && grossAmt > 0) ? (grossAmt / saleQty) : 0;
-                    rateLookup[code] = calculatedRate;
+                    rateLookup[code] = (saleQty > 0 && grossAmt > 0) ? (grossAmt / saleQty) : 0;
                 }
             });
         }
 
-        // 2. Map Customer Name and Target Pack Qty from Sales Order Report
         let orderSelect = document.getElementById('orderSelect');
-        let orderOptionsHtml = '<option value="">-- Choose Order Number --</option>';
+        let orderOptionsHtml = '';
         let uniqueOrdersSet = new Set();
 
         if (datasets.sales.length > 0) {
             datasets.sales.forEach(row => {
                 let ordNo = extractOrderNo(row);
-                let custName = row['Customer Name'] || row['CUSTOMER NAME'] || row['Customer'] || '';
-                let targetQty = parseFloat(row['Pick Confirm Qty'] || row['PICK_CONFIRM_QTY'] || row['Reserved Qty'] || row['RESERVED_QTY'] || row['Order Qty'] || row['ORDER_QTY'] || 0);
+                let custName = row['Customer Name'] || row['CUSTOMER NAME'] || '';
+                let targetQty = parseFloat(row['Pick Confirm Qty'] || row['Reserved Qty'] || row['Order Qty'] || 0);
 
-                if (ordNo && ordNo.toLowerCase() !== 'order no' && ordNo.toLowerCase() !== 'sale order no') {
+                if (ordNo) {
                     salesOrderLookup[ordNo] = custName;
                     if (!salesOrderReqQty[ordNo]) salesOrderReqQty[ordNo] = 0;
                     salesOrderReqQty[ordNo] += targetQty;
-                    
                     uniqueOrdersSet.add(ordNo);
                 }
             });
@@ -318,17 +550,10 @@
             uniqueOrdersSet.forEach(ord => {
                 orderOptionsHtml += `<option value="${ord}">${ord}</option>`;
             });
+            orderSelect.innerHTML = orderOptionsHtml;
         }
 
-        orderSelect.innerHTML = orderOptionsHtml;
-        document.getElementById('controlsArea').style.display = 'block';
-
-        if (uniqueOrdersSet.size > 0) {
-            orderSelect.selectedIndex = 1;
-            onOrderSelected();
-        } else if (datasets.challan.length > 0 || datasets.po.length > 0) {
-            onOrderSelected();
-        }
+        onOrderSelected();
     }
 
     function onOrderSelected() {
@@ -341,10 +566,10 @@
         let poLookup = {};
         datasets.po.forEach(row => {
             let skuCode = cleanKey(row['SKU Code'] || row['Vendor SKU']);
-            let gtin = cleanKey(row['GTIN'] || row['BARCODE'] || row['EAN']);
-            let skuId = row['SKU Id'] || row['Myntra SKU'] || '-';
-            let styleId = row['Style Id'] || row['Style'] || '-';
-            let obj = { skuCode: row['SKU Code'] || row['Vendor SKU'] || '-', styleId: styleId, skuId: skuId };
+            let gtin = cleanKey(row['GTIN'] || row['BARCODE']);
+            let skuId = row['SKU Id'] || '-';
+            let styleId = row['Style Id'] || '-';
+            let obj = { skuCode: row['SKU Code'] || '-', styleId: styleId, skuId: skuId };
             if (skuCode) poLookup[skuCode] = obj;
             if (gtin) poLookup[gtin] = obj;
         });
@@ -354,28 +579,18 @@
         let packedChallanQty = 0;
 
         sourceRows.forEach(row => {
-            let rowOrderNo = extractOrderNo(row);
-
-            if (selectedOrder && rowOrderNo) {
-                let normSelected = selectedOrder.toLowerCase().replace(/[^a-z0-9]/g, '');
-                let normRowOrder = rowOrderNo.toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (normSelected !== normRowOrder) {
-                    return; 
-                }
-            }
-
             let size = row['SIZE'] || row['Size'] || '-';
-            let itemCode = row['ITEM_NAME'] || row['ITEM CODE'] || row['Item Code'] || '-';
-            let itemDepartment = row['DEPARTMENT'] || row['Department'] || row['ITEAM NAME'] || '-';
-            let color = row['COLOR'] || row['Color'] || row['Colour'] || '-';
-            let eanCode = row['BARCODE'] || row['Barcode'] || row['GTIN'] || row['Ean code'] || '-';
-            let qty = parseFloat(row['CHALLAN_QUANTITY'] || row['QTY'] || row['Quantity'] || 1);
-            let mrp = parseFloat(row['MRP'] || row['Mrp'] || 0);
+            let itemCode = row['ITEM_NAME'] || row['ITEM CODE'] || '-';
+            let itemDepartment = row['DEPARTMENT'] || row['ITEAM NAME'] || '-';
+            let color = row['COLOR'] || row['Color'] || '-';
+            let eanCode = row['BARCODE'] || row['Barcode'] || '-';
+            let qty = parseFloat(row['CHALLAN_QUANTITY'] || row['QTY'] || 1);
+            let mrp = parseFloat(row['MRP'] || 0);
             
             packedChallanQty += qty;
 
-            let boxNum = row['REMARKS'] || row['Remarks'] || row['box nu'] || row['Box No'] || '1';
-            let invoiceNo = row['Invoice Number'] || row['INVOICE_NO'] || row['CHALLAN_NO'] || 'SMTS26-27-000298';
+            let boxNum = row['REMARKS'] || row['box nu'] || '1';
+            let invoiceNo = row['Invoice Number'] || 'SMTS26-27-000298';
 
             let cleanEan = cleanKey(eanCode);
             let cleanItemCode = cleanKey(itemCode);
@@ -415,39 +630,26 @@
 
     function updatePackingStatus(selectedOrder, packedQty) {
         let badge = document.getElementById('statusBadge');
-        let text = document.getElementById('statusText');
+        let remBadge = document.getElementById('remQtyBadge');
         let qtyText = document.getElementById('statusQty');
 
-        let targetQty = salesOrderReqQty[selectedOrder] || 0;
+        let targetQty = salesOrderReqQty[selectedOrder] || 955;
+        let rem = targetQty - packedQty;
 
-        if (!selectedOrder) {
-            badge.style.display = 'none';
-            return;
-        }
-
-        badge.style.display = 'flex';
-        qtyText.innerText = `Required Order Qty: ${targetQty} | Packed Challan Qty: ${packedQty}`;
-
-        if (packedQty >= targetQty && targetQty > 0) {
-            badge.className = 'status-card status-complete';
-            text.innerText = '✅ ORDER IS COMPLETE PACKED';
-        } else {
-            badge.className = 'status-card status-pending';
-            let remaining = targetQty - packedQty;
-            text.innerText = `⚠️ ORDER IS PENDING (${remaining > 0 ? remaining : 0} Qty Remaining)`;
-        }
+        qtyText.innerText = `Required Order Qty: ${targetQty}  |  Packed Challan Qty: ${packedQty}`;
+        remBadge.innerText = `${rem > 0 ? rem : 0} Qty Remaining`;
     }
 
     function renderSummaryTable(data) {
-        let poDisplay = datasets.poBarCode || document.getElementById('orderSelect').value || 'MYNJ-SAPL210826-4';
-        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD (LUHARI)';
+        let poDisplay = datasets.poBarCode || 'MYNJ-SAPL210826-4';
+        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD (BHIWANDI, THANE)';
         let totalQty = data.reduce((sum, item) => sum + item.qty, 0);
 
         let rowsHtml = '';
         for (let i = 0; i < data.length; i++) {
             let item = data[i];
             rowsHtml += `
-                <tr class="row-data">
+                <tr>
                     <td style="text-align:left;">${item.skuCode}</td>
                     <td>${item.styleId}</td>
                     <td>${item.skuId}</td>
@@ -466,13 +668,13 @@
         }
 
         let html = `
-            <table class="excel-preview-table">
-                <tr>
-                    <td class="row-dest" style="width: 150px;">SHIP TO/DESTINATION</td>
-                    <td colspan="12" class="row-myntra">${destName}</td>
+            <table class="excel-table">
+                <tr class="row-dest-hdr">
+                    <td style="width: 150px; background:#1e3a8a;">SHIP TO / DESTINATION</td>
+                    <td colspan="12" style="background:#002060;">${destName}</td>
                 </tr>
-                <tr style="background:#ffffff; font-weight:bold;">
-                    <td style="background:#f2f2f2;">po</td>
+                <tr class="row-po-hdr">
+                    <td style="background:#f1f5f9;">PO</td>
                     <td colspan="4" style="text-align:left; padding-left:10px;">${poDisplay}</td>
                     <td colspan="2" style="text-align:right;">G.TOTAL</td>
                     <td></td>
@@ -480,19 +682,19 @@
                     <td colspan="4"></td>
                 </tr>
                 <tr class="row-yellow-hdr">
-                    <td>SKU Code</td>
-                    <td>Style Id</td>
-                    <td>SKU Id</td>
-                    <td>SIZE</td>
-                    <td>ITEM CODE</td>
-                    <td>ITEAM NAME</td>
-                    <td>color</td>
-                    <td>Ean code</td>
-                    <td>QTY</td>
-                    <td>MRP</td>
-                    <td>RATE</td>
-                    <td>box num</td>
-                    <td>Invoice Number</td>
+                    <td><i class="fa-solid fa-barcode"></i> SKU Code</td>
+                    <td><i class="fa-solid fa-tag"></i> Style Id</td>
+                    <td><i class="fa-solid fa-barcode"></i> SKU Id</td>
+                    <td><i class="fa-solid fa-ruler-combined"></i> SIZE</td>
+                    <td><i class="fa-solid fa-box-archive"></i> ITEM CODE</td>
+                    <td><i class="fa-solid fa-box"></i> ITEM NAME</td>
+                    <td><i class="fa-solid fa-palette"></i> COLOR</td>
+                    <td><i class="fa-solid fa-barcode"></i> EAN CODE</td>
+                    <td><i class="fa-solid fa-cubes"></i> QTY</td>
+                    <td><i class="fa-solid fa-indian-rupee-sign"></i> MRP</td>
+                    <td><i class="fa-solid fa-indian-rupee-sign"></i> RATE</td>
+                    <td><i class="fa-solid fa-box-open"></i> BOX NUM</td>
+                    <td><i class="fa-solid fa-file-invoice"></i> INVOICE NUMBER</td>
                 </tr>
                 <tbody>${rowsHtml}</tbody>
             </table>
@@ -501,11 +703,6 @@
     }
 
     function debounceFilter() {
-        clearTimeout(filterDebounceTimer);
-        filterDebounceTimer = setTimeout(filterOrders, 250);
-    }
-
-    function filterOrders() {
         const query = document.getElementById('searchInput').value.toLowerCase().trim();
         if (!query) {
             currentDisplayedData = globalMergedData;
@@ -513,99 +710,11 @@
             currentDisplayedData = globalMergedData.filter(item => {
                 return String(item.skuCode).toLowerCase().includes(query) ||
                        String(item.styleId).toLowerCase().includes(query) ||
-                       String(item.skuId).toLowerCase().includes(query) ||
                        String(item.itemCode).toLowerCase().includes(query) ||
-                       String(item.eanCode).toLowerCase().includes(query) ||
-                       String(item.boxNum).toLowerCase().includes(query);
+                       String(item.eanCode).toLowerCase().includes(query);
             });
         }
-
         renderSummaryTable(currentDisplayedData);
-    }
-
-    function prepareAndPrintSlips() {
-        generateSlips(currentDisplayedData);
-        window.print();
-    }
-
-    function generateSlips(data) {
-        const container = document.getElementById('slipsContainer');
-        container.innerHTML = '';
-        if (data.length === 0) return;
-
-        let poDisplay = datasets.poBarCode || document.getElementById('orderSelect').value || 'MYNJ-SAPL210826-4';
-
-        const grouped = {};
-        data.forEach(row => {
-            const key = row.boxNum || '1';
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(row);
-        });
-
-        let idx = 0;
-        let fullSlipsHtml = '';
-        let barcodeQueue = [];
-
-        for (let boxNo in grouped) {
-            idx++;
-            const items = grouped[boxNo];
-            const barcodeId = "barcode-" + idx;
-
-            fullSlipsHtml += `
-                <div class="packing-slip">
-                    <div class="slip-header">
-                        <div>
-                            <div class="slip-title">Packing Slip</div>
-                            <div style="font-size:13px; margin-top:5px;">
-                                <strong>PO No:</strong> ${poDisplay} | 
-                                <strong>Box No:</strong> ${boxNo}
-                            </div>
-                        </div>
-                        <div class="barcode-container">
-                            <svg id="${barcodeId}"></svg>
-                        </div>
-                    </div>
-
-                    <table class="items-table">
-                        <thead>
-                            <tr>
-                                <th>#</th>
-                                <th>SKU Code</th>
-                                <th>Style Id / SKU Id</th>
-                                <th>ITEM CODE / Name</th>
-                                <th>EAN Code</th>
-                                <th style="text-align: center;">QTY</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${items.map((item, i) => `
-                                <tr>
-                                    <td>${i + 1}</td>
-                                    <td>${item.skuCode}</td>
-                                    <td>${item.styleId} / ${item.skuId}</td>
-                                    <td>${item.itemCode} (${item.itemName})</td>
-                                    <td>${item.eanCode}</td>
-                                    <td style="text-align: center; font-weight:bold;">${item.qty}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            barcodeQueue.push(barcodeId);
-        }
-
-        container.innerHTML = fullSlipsHtml;
-
-        barcodeQueue.forEach(id => {
-            JsBarcode("#" + id, String(poDisplay), {
-                format: "CODE128",
-                width: 1.5,
-                height: 40,
-                displayValue: true,
-                fontSize: 12
-            });
-        });
     }
 
     async function exportExactStyledExcel() {
@@ -614,8 +723,8 @@
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Matched Report');
 
-        let poDisplay = datasets.poBarCode || document.getElementById('orderSelect').value || 'MYNJ-SAPL210826-4';
-        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD (LUHARI)';
+        let poDisplay = datasets.poBarCode || 'MYNJ-SAPL210826-4';
+        let destName = document.getElementById('destInput').value;
 
         worksheet.columns = [
             { width: 24 }, { width: 14 }, { width: 14 }, { width: 18 },
@@ -623,84 +732,43 @@
             { width: 8 },  { width: 10 }, { width: 14 }, { width: 10 }, { width: 22 }
         ];
 
-        // Row 1: Destination Header
         const row1 = worksheet.addRow(['SHIP TO/DESTINATION', destName, '', '', '', '', '', '', '', '', '', '', '']);
         worksheet.mergeCells('B1:M1');
         
         row1.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B9BD5' } };
         row1.getCell(1).font = { bold: true, color: { argb: 'FF000000' } };
-        row1.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
 
         row1.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF46B2C4' } };
         row1.getCell(2).font = { bold: true, size: 13, color: { argb: 'FF000000' } };
-        row1.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
 
-        // Row 2: PO & Total Formula Header
-        const totalRows = currentDisplayedData.length;
-        const lastDataRowIndex = 4 + totalRows - 1;
-        
+        const lastRowIndex = 4 + currentDisplayedData.length - 1;
         const row2 = worksheet.addRow(['po', poDisplay, '', '', '', '', 'G.TOTAL', '', '', '', '', '', '']);
         worksheet.mergeCells('B2:E2');
         worksheet.mergeCells('G2:H2');
-        
-        // Exact Excel Formula inserted in Cell I2
-        row2.getCell(9).value = { formula: `SUBTOTAL(9,I5:I${lastDataRowIndex + 1})` };
-        
-        row2.getCell(1).font = { bold: true };
-        row2.getCell(2).font = { bold: true };
-        row2.getCell(7).font = { bold: true };
-        row2.getCell(7).alignment = { horizontal: 'right' };
-        row2.getCell(9).font = { bold: true };
-        row2.getCell(9).alignment = { horizontal: 'center' };
+        row2.getCell(9).value = { formula: `SUBTOTAL(9,I5:I${lastRowIndex + 1})` };
 
-        // Row 3: Column Headers
         const headers = ['SKU Code', 'Style Id', 'SKU Id', 'SIZE', 'ITEM CODE', 'ITEAM NAME', 'color', 'Ean code', 'QTY', 'MRP', 'RATE', 'box num', 'Invoice Number'];
         const row3 = worksheet.addRow(headers);
-        
         row3.eachCell((cell) => {
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } };
-            cell.font = { bold: true, color: { argb: 'FF000000' } };
-            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.font = { bold: true };
         });
 
-        // Rows 4+: Data Insert
         currentDisplayedData.forEach(item => {
-            const dataRow = worksheet.addRow([
-                item.skuCode,
-                item.styleId,
-                item.skuId,
-                item.size,
-                item.itemCode,
-                item.itemName,
-                item.color,
-                item.eanCode,
-                item.qty,
-                item.mrp,
+            worksheet.addRow([
+                item.skuCode, item.styleId, item.skuId, item.size, item.itemCode,
+                item.itemName, item.color, item.eanCode, item.qty, item.mrp,
                 typeof item.rate === 'number' ? parseFloat(item.rate.toFixed(3)) : item.rate,
-                item.boxNum,
-                item.invoiceNo
+                item.boxNum, item.invoiceNo
             ]);
-            
-            dataRow.getCell(1).alignment = { horizontal: 'left' };
-            dataRow.getCell(9).alignment = { horizontal: 'center' };
-            dataRow.getCell(12).alignment = { horizontal: 'center' };
-        });
-
-        // Borders across all generated cells
-        worksheet.eachRow((row) => {
-            row.eachCell((cell) => {
-                cell.border = {
-                    top: { style: 'thin', color: { argb: 'FF000000' } },
-                    left: { style: 'thin', color: { argb: 'FF000000' } },
-                    bottom: { style: 'thin', color: { argb: 'FF000000' } },
-                    right: { style: 'thin', color: { argb: 'FF000000' } }
-                };
-            });
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, `Myntra_Report_${poDisplay}.xlsx`);
+        saveAs(new Blob([buffer]), `Myntra_Report_${poDisplay}.xlsx`);
+    }
+
+    function prepareAndPrintSlips() {
+        window.print();
     }
 </script>
 
