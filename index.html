@@ -134,7 +134,7 @@
             <div class="filter-row">
                 <div>
                     <strong>🏢 Destination Name (Auto):</strong>
-                    <input type="text" id="destInput" class="text-input" value="MYNTRA JABONG INDIA PVT LTD" readonly>
+                    <input type="text" id="destInput" class="text-input" value="MYNTRA JABONG INDIA PVT LTD (LUHARI)" readonly>
                 </div>
                 <div>
                     <strong>📋 Select Order Number:</strong>
@@ -199,15 +199,15 @@
 
         for (let i = 0; i < Math.min(rawJson.length, 30); i++) {
             let rowStr = rawJson[i].map(c => String(c)).join(' ');
-            if (rowStr.includes('PO Barcode')) {
+            if (rowStr.toLowerCase().includes('po barcode') || rowStr.toLowerCase().includes('po number')) {
                 poBarcode = String(rawJson[i][1] || rawJson[i][2] || '').trim();
             }
-            if (rowStr.includes('SKU Id') && rowStr.includes('Style Id')) {
+            if (rowStr.includes('SKU Id') || rowStr.includes('Style Id') || rowStr.includes('SKU Code')) {
                 headerIdx = i;
             }
         }
         datasets.poBarCode = poBarcode || 'MYNJ-SAPL210826-4';
-        if (headerIdx === -1) return [];
+        if (headerIdx === -1) headerIdx = 0;
 
         let headers = rawJson[headerIdx].map(h => String(h).trim());
         let result = [];
@@ -286,10 +286,10 @@
             datasets.saleItem.forEach(row => {
                 let code = cleanKey(row['BARCODE'] || row['Barcode'] || row['ITEM CODE'] || row['Item Code'] || row['EAN'] || '');
                 let grossAmt = parseFloat(row['GROSS AMOUNT'] || row['Gross Amount'] || row['GROSS_AMT'] || 0);
-                let saleQty = parseFloat(row['SALE QTY'] || row['Sale Qty'] || row['QTY'] || row['Quantity'] || 0);
+                let saleQty = parseFloat(row['SALE QTY'] || row['Sale Qty'] || row['QTY'] || row['Quantity'] || 1);
                 
                 if (code) {
-                    let calculatedRate = (saleQty > 0 && grossAmt > 0) ? (grossAmt / saleQty).toFixed(2) : 0;
+                    let calculatedRate = (saleQty > 0 && grossAmt > 0) ? (grossAmt / saleQty) : 0;
                     rateLookup[code] = calculatedRate;
                 }
             });
@@ -340,11 +340,11 @@
 
         let poLookup = {};
         datasets.po.forEach(row => {
-            let skuCode = cleanKey(row['SKU Code']);
-            let gtin = cleanKey(row['GTIN'] || row['BARCODE']);
-            let skuId = row['SKU Id'] || '-';
-            let styleId = row['Style Id'] || '-';
-            let obj = { skuCode: row['SKU Code'] || '-', styleId: styleId, skuId: skuId };
+            let skuCode = cleanKey(row['SKU Code'] || row['Vendor SKU']);
+            let gtin = cleanKey(row['GTIN'] || row['BARCODE'] || row['EAN']);
+            let skuId = row['SKU Id'] || row['Myntra SKU'] || '-';
+            let styleId = row['Style Id'] || row['Style'] || '-';
+            let obj = { skuCode: row['SKU Code'] || row['Vendor SKU'] || '-', styleId: styleId, skuId: skuId };
             if (skuCode) poLookup[skuCode] = obj;
             if (gtin) poLookup[gtin] = obj;
         });
@@ -356,7 +356,6 @@
         sourceRows.forEach(row => {
             let rowOrderNo = extractOrderNo(row);
 
-            // Match selected Order Number safely
             if (selectedOrder && rowOrderNo) {
                 let normSelected = selectedOrder.toLowerCase().replace(/[^a-z0-9]/g, '');
                 let normRowOrder = rowOrderNo.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -375,15 +374,16 @@
             
             packedChallanQty += qty;
 
-            let boxNum = row['REMARKS'] || row['Remarks'] || row['box nu'] || row['Box No'] || '-';
-            let invoiceNo = row['Invoice Number'] || row['INVOICE_NO'] || 'SMTS26-27-000298';
+            let boxNum = row['REMARKS'] || row['Remarks'] || row['box nu'] || row['Box No'] || '1';
+            let invoiceNo = row['Invoice Number'] || row['INVOICE_NO'] || row['CHALLAN_NO'] || 'SMTS26-27-000298';
 
             let cleanEan = cleanKey(eanCode);
             let cleanItemCode = cleanKey(itemCode);
             
-            let rate = rateLookup[cleanEan] || rateLookup[cleanItemCode] || ((qty > 0 && mrp > 0) ? (mrp / qty).toFixed(2) : 0);
+            let calcRate = rateLookup[cleanEan] || rateLookup[cleanItemCode];
+            let rate = calcRate !== undefined ? calcRate : ((qty > 0 && mrp > 0) ? (mrp / qty) : 0);
 
-            let poInfo = poLookup[cleanEan] || {
+            let poInfo = poLookup[cleanEan] || poLookup[cleanItemCode] || {
                 skuCode: row['SKU Code'] || '-',
                 styleId: row['Style Id'] || '-',
                 skuId: row['SKU Id'] || '-'
@@ -440,7 +440,7 @@
 
     function renderSummaryTable(data) {
         let poDisplay = datasets.poBarCode || document.getElementById('orderSelect').value || 'MYNJ-SAPL210826-4';
-        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD';
+        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD (LUHARI)';
         let totalQty = data.reduce((sum, item) => sum + item.qty, 0);
 
         let rowsHtml = '';
@@ -458,7 +458,7 @@
                     <td>${item.eanCode}</td>
                     <td>${item.qty}</td>
                     <td>${item.mrp}</td>
-                    <td>${item.rate}</td>
+                    <td>${typeof item.rate === 'number' ? item.rate.toFixed(3) : item.rate}</td>
                     <td>${item.boxNum}</td>
                     <td>${item.invoiceNo}</td>
                 </tr>
@@ -615,15 +615,15 @@
         const worksheet = workbook.addWorksheet('Matched Report');
 
         let poDisplay = datasets.poBarCode || document.getElementById('orderSelect').value || 'MYNJ-SAPL210826-4';
-        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD';
-        let totalQty = currentDisplayedData.reduce((sum, item) => sum + item.qty, 0);
+        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD (LUHARI)';
 
         worksheet.columns = [
             { width: 24 }, { width: 14 }, { width: 14 }, { width: 18 },
             { width: 16 }, { width: 16 }, { width: 14 }, { width: 18 },
-            { width: 8 },  { width: 10 }, { width: 12 }, { width: 10 }, { width: 22 }
+            { width: 8 },  { width: 10 }, { width: 14 }, { width: 10 }, { width: 22 }
         ];
 
+        // Row 1: Destination Header
         const row1 = worksheet.addRow(['SHIP TO/DESTINATION', destName, '', '', '', '', '', '', '', '', '', '', '']);
         worksheet.mergeCells('B1:M1');
         
@@ -635,9 +635,16 @@
         row1.getCell(2).font = { bold: true, size: 13, color: { argb: 'FF000000' } };
         row1.getCell(2).alignment = { horizontal: 'center', vertical: 'middle' };
 
-        const row2 = worksheet.addRow(['po', poDisplay, '', '', '', '', 'G.TOTAL', '', totalQty, '', '', '', '']);
+        // Row 2: PO & Total Formula Header
+        const totalRows = currentDisplayedData.length;
+        const lastDataRowIndex = 4 + totalRows - 1;
+        
+        const row2 = worksheet.addRow(['po', poDisplay, '', '', '', '', 'G.TOTAL', '', '', '', '', '', '']);
         worksheet.mergeCells('B2:E2');
         worksheet.mergeCells('G2:H2');
+        
+        // Exact Excel Formula inserted in Cell I2
+        row2.getCell(9).value = { formula: `SUBTOTAL(9,I5:I${lastDataRowIndex + 1})` };
         
         row2.getCell(1).font = { bold: true };
         row2.getCell(2).font = { bold: true };
@@ -646,6 +653,7 @@
         row2.getCell(9).font = { bold: true };
         row2.getCell(9).alignment = { horizontal: 'center' };
 
+        // Row 3: Column Headers
         const headers = ['SKU Code', 'Style Id', 'SKU Id', 'SIZE', 'ITEM CODE', 'ITEAM NAME', 'color', 'Ean code', 'QTY', 'MRP', 'RATE', 'box num', 'Invoice Number'];
         const row3 = worksheet.addRow(headers);
         
@@ -655,6 +663,7 @@
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
         });
 
+        // Rows 4+: Data Insert
         currentDisplayedData.forEach(item => {
             const dataRow = worksheet.addRow([
                 item.skuCode,
@@ -667,7 +676,7 @@
                 item.eanCode,
                 item.qty,
                 item.mrp,
-                item.rate,
+                typeof item.rate === 'number' ? parseFloat(item.rate.toFixed(3)) : item.rate,
                 item.boxNum,
                 item.invoiceNo
             ]);
@@ -677,6 +686,7 @@
             dataRow.getCell(12).alignment = { horizontal: 'center' };
         });
 
+        // Borders across all generated cells
         worksheet.eachRow((row) => {
             row.eachCell((cell) => {
                 cell.border = {
