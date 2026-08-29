@@ -218,7 +218,7 @@
         let headerIdx = 0;
         for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
             let rowStr = rawJson[i].map(c => String(c)).join(' ');
-            if (rowStr.includes('BARCODE') || rowStr.includes('Order No') || rowStr.includes('REMARKS') || rowStr.includes('Customer Name') || rowStr.includes('GROSS AMOUNT')) {
+            if (rowStr.includes('BARCODE') || rowStr.includes('Order No') || rowStr.includes('REMARKS') || rowStr.includes('Customer Name') || rowStr.includes('GROSS AMOUNT') || rowStr.includes('Sale Order No')) {
                 headerIdx = i;
                 break;
             }
@@ -288,22 +288,28 @@
         let orderSelect = document.getElementById('orderSelect');
         let orderOptionsHtml = '<option value="">-- Choose Order Number --</option>';
 
+        // Use Set to strictly enforce unique order numbers in dropdown list
+        let uniqueOrdersSet = new Set();
+
         if (datasets.sales.length > 0) {
             datasets.sales.forEach(row => {
-                let ordNo = String(row['Order No'] || row['ORDER_NO'] || row['DOC No'] || '').trim();
+                let ordNo = String(row['Sale Order No'] || row['Sale Order No.'] || row['Order No'] || row['ORDER_NO'] || row['DOC No'] || '').trim();
                 let custName = row['Customer Name'] || row['CUSTOMER NAME'] || row['Customer'] || '';
                 
                 // Priority for Qty: Pick Confirm Qty > Reserved Qty > Order Qty
                 let targetQty = parseFloat(row['Pick Confirm Qty'] || row['PICK_CONFIRM_QTY'] || row['Reserved Qty'] || row['RESERVED_QTY'] || row['Order Qty'] || row['ORDER_QTY'] || 0);
 
-                if (ordNo && ordNo !== 'Order No') {
+                if (ordNo && ordNo !== 'Order No' && ordNo !== 'Sale Order No') {
                     salesOrderLookup[ordNo] = custName;
                     if (!salesOrderReqQty[ordNo]) salesOrderReqQty[ordNo] = 0;
                     salesOrderReqQty[ordNo] += targetQty;
+                    
+                    uniqueOrdersSet.add(ordNo);
                 }
             });
 
-            Object.keys(salesOrderLookup).forEach(ord => {
+            // Iterate over Unique Orders ONLY (Prevents Multiple/Duplicate dropdown entries)
+            uniqueOrdersSet.forEach(ord => {
                 orderOptionsHtml += `<option value="${ord}">${ord}</option>`;
             });
         }
@@ -311,7 +317,7 @@
         orderSelect.innerHTML = orderOptionsHtml;
         document.getElementById('controlsArea').style.display = 'block';
 
-        if (Object.keys(salesOrderLookup).length > 0) {
+        if (uniqueOrdersSet.size > 0) {
             orderSelect.selectedIndex = 1;
             onOrderSelected();
         } else if (datasets.challan.length > 0 || datasets.po.length > 0) {
@@ -342,7 +348,7 @@
         let packedChallanQty = 0;
 
         sourceRows.forEach(row => {
-            let rowOrderNo = String(row['Order No'] || row['ORDER_NO'] || row['DOC No'] || row['CHALLAN_NO'] || '').trim();
+            let rowOrderNo = String(row['Sale Order No'] || row['Sale Order No.'] || row['Order No'] || row['ORDER_NO'] || row['DOC No'] || row['CHALLAN_NO'] || '').trim();
             if (selectedOrder && rowOrderNo && rowOrderNo !== selectedOrder) {
                 return; 
             }
