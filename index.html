@@ -3,24 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Myntra Order Analysis & Custom Excel Generator</title>
+    <title>B2B Order Analysis & Custom Excel Generator</title>
     
     <!-- Google Fonts & Font Awesome Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- XLSX, ExcelJS, FileSaver & Barcode Libraries -->
+    <!-- XLSX, ExcelJS & FileSaver Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
     <style>
         :root {
-            --sidebar-bg: #030816;
-            --sidebar-hover: #0d1629;
-            --primary-blue: #1b63f3;
-            --bg-body: #f3f5f9;
+            --sidebar-bg: #030712;
+            --primary-red: #e11d48;
+            --primary-red-hover: #be123c;
+            --bg-body: #f8fafc;
             --card-bg: #ffffff;
             --text-dark: #0f172a;
             --text-muted: #64748b;
@@ -38,204 +37,241 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 20px 15px;
+            padding: 24px 16px;
             flex-shrink: 0;
         }
 
         .brand-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 5px;
-            margin-bottom: 25px;
+            padding: 0 8px;
+            margin-bottom: 24px;
         }
-        .brand-logo img { height: 36px; }
-        .brand-title { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; line-height: 1; }
-        .brand-sub { font-size: 11px; color: #3b82f6; font-weight: 600; margin-top: 3px; }
+        .brand-title { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; color: #ffffff; line-height: 1; }
+        .brand-sub { font-size: 11px; color: var(--primary-red); font-weight: 700; margin-top: 4px; }
 
-        .nav-list { list-style: none; display: flex; flex-direction: column; gap: 6px; }
-        .nav-item a {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
-            color: #94a3b8;
-            text-decoration: none;
-            border-radius: 10px;
-            font-size: 14px;
-            font-weight: 600;
-            transition: 0.2s;
-        }
-        .nav-item.active a, .nav-item a:hover {
-            background-color: var(--primary-blue);
-            color: #fff;
-            box-shadow: 0 4px 12px rgba(27, 99, 243, 0.35);
-        }
-
-        .system-status {
-            background: linear-gradient(135deg, #091326 0%, #030816 100%);
-            border: 1px solid #1e293b;
-            border-radius: 12px;
-            padding: 15px;
-            margin-top: 20px;
-        }
-        .status-header { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: #fff; }
-        .status-indicator { width: 8px; height: 8px; background-color: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; }
         .user-profile {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px;
-            background-color: #0b1324;
-            border-radius: 12px;
-            margin-top: 15px;
-            border: 1px solid #1e293b;
+            padding: 10px 8px;
+            margin-bottom: 20px;
         }
-        .avatar { width: 36px; height: 36px; background: #2563eb; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+        .avatar { 
+            width: 40px; 
+            height: 40px; 
+            background: #1e293b; 
+            color: #fff; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: 800; 
+            font-size: 16px;
+            border: 1px solid #334155;
+        }
+        .user-info .name { font-size: 13px; font-weight: 700; color: #fff; }
+        .user-info .role { font-size: 11px; color: var(--primary-red); font-weight: 600; }
+        .user-info .sub { font-size: 10px; color: #64748b; }
 
-        /* Main Area */
-        .main-wrapper { flex: 1; padding: 25px 35px; overflow-y: auto; }
-        
-        .top-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-        .top-title h1 { font-size: 24px; font-weight: 800; color: #0f172a; }
-        .top-title p { font-size: 13px; color: var(--text-muted); font-weight: 500; }
-        
-        .header-widgets { display: flex; align-items: center; gap: 15px; }
-        .date-badge {
-            background: #fff;
-            padding: 8px 16px;
-            border-radius: 10px;
+        .nav-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+        .nav-item a {
             display: flex;
             align-items: center;
             gap: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+            padding: 10px 14px;
+            color: #94a3b8;
+            text-decoration: none;
+            border-radius: 10px;
             font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .nav-item.active a {
+            background-color: var(--primary-red);
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(225, 29, 72, 0.35);
+        }
+        .nav-item a:hover:not(.active) {
+            background-color: #111827;
+            color: #f1f5f9;
+        }
+
+        .system-status {
+            background: #090d16;
+            border: 1px solid #1e293b;
+            border-radius: 12px;
+            padding: 14px;
+            margin-top: 20px;
+        }
+        .status-header { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: #fff; }
+        .status-indicator { width: 8px; height: 8px; background-color: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; }
+
+        .copyright-text {
+            font-size: 10px;
+            color: #475569;
+            margin-top: 15px;
+            padding-left: 4px;
+            line-height: 1.4;
+        }
+
+        /* Main Area */
+        .main-wrapper { flex: 1; padding: 24px 32px; overflow-y: auto; display: flex; flex-direction: column; justify-content: space-between; }
+        
+        .top-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
+        .top-title .greeting { font-size: 13px; font-weight: 700; color: var(--primary-red); margin-bottom: 2px; }
+        .top-title h1 { font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: -0.5px; }
+        .top-title p { font-size: 12px; color: var(--text-muted); font-weight: 500; margin-top: 2px; }
+        
+        .header-widgets { display: flex; align-items: center; gap: 12px; }
+        .date-badge {
+            background: #030712;
+            color: #fff;
+            padding: 8px 14px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
             font-weight: 700;
         }
-        .notif-btn { background: #fff; border: 1px solid var(--border-color); padding: 10px 12px; border-radius: 10px; cursor: pointer; position: relative; }
-        .notif-badge { position: absolute; top: -3px; right: -3px; background: #ef4444; color: #fff; font-size: 10px; padding: 2px 5px; border-radius: 10px; font-weight: 800; }
+        .date-badge i { color: var(--primary-red); }
+        .notif-btn { 
+            background: #030712; 
+            color: #fff;
+            border: none; 
+            padding: 10px 12px; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            position: relative; 
+        }
+        .notif-badge { position: absolute; top: -3px; right: -3px; background: var(--primary-red); color: #fff; font-size: 9px; padding: 2px 5px; border-radius: 10px; font-weight: 800; }
 
-        /* Cards Grid */
-        .cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 25px; }
+        /* 4 Cards Grid */
+        .cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
         .upload-card {
             background: #fff;
-            border-radius: 16px;
-            padding: 20px;
+            border-radius: 14px;
+            padding: 18px;
             border: 1px solid var(--border-color);
             position: relative;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
             display: flex;
             flex-direction: column;
             align-items: center;
             text-align: center;
         }
-        .card-num { position: absolute; top: 15px; right: 20px; font-size: 20px; font-weight: 800; color: var(--primary-blue); opacity: 0.8; }
-        .card-icon { width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 12px; }
+        .card-num { position: absolute; top: 12px; right: 16px; font-size: 20px; font-weight: 800; color: #0f172a; opacity: 0.8; }
+        .card-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 10px; color: #fff; }
         
-        .c1 .card-icon { background: #eff6ff; color: #2563eb; }
-        .c2 .card-icon { background: #ecfdf5; color: #059669; }
-        .c3 .card-icon { background: #fff7ed; color: #ea580c; }
-        .c4 .card-icon { background: #f5f3ff; color: #7c3aed; }
+        .c1 .card-icon { background: #f43f5e; }
+        .c2 .card-icon { background: #10b981; }
+        .c3 .card-icon { background: #f97316; }
+        .c4 .card-icon { background: #8b5cf6; }
 
-        .card-title { font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 15px; min-height: 38px; display: flex; align-items: center; }
+        .card-title { font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 12px; min-height: 36px; display: flex; align-items: center; }
         .btn-upload {
-            background: var(--primary-blue);
+            background: var(--primary-red);
             color: #fff;
             border: none;
-            padding: 8px 18px;
+            padding: 8px 16px;
             border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             width: 100%;
             justify-content: center;
+            transition: 0.2s;
         }
         .c2 .btn-upload { background: #10b981; }
         .c3 .btn-upload { background: #f97316; }
         .c4 .btn-upload { background: #8b5cf6; }
 
-        .file-status { margin-top: 12px; font-size: 11px; font-weight: 600; color: #10b981; word-break: break-all; }
+        .file-status { margin-top: 10px; font-size: 10px; font-weight: 700; color: #10b981; word-break: break-all; }
 
         /* Filter Panel */
         .filter-section {
             background: #fff;
-            border-radius: 16px;
+            border-radius: 14px;
             border: 1px solid var(--border-color);
-            padding: 22px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-            margin-bottom: 25px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            margin-bottom: 20px;
         }
-        .filter-header {
-            background: var(--primary-blue);
-            color: #fff;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 6px 16px;
-            border-radius: 8px 8px 8px 0;
-            font-size: 12px;
-            font-weight: 700;
-            margin-bottom: 18px;
-        }
-        .filter-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 18px; }
-        .form-group label { font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .filter-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .form-group label { font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+        .form-control-wrapper { display: flex; align-items: center; }
         .form-control {
             width: 100%;
-            padding: 10px 14px;
+            padding: 9px 12px;
             border: 1px solid #cbd5e1;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             color: #1e293b;
             background: #f8fafc;
         }
+        .search-btn-addon {
+            background: var(--primary-red);
+            color: #fff;
+            border: none;
+            padding: 9px 14px;
+            border-radius: 0 8px 8px 0;
+            cursor: pointer;
+            font-size: 13px;
+        }
 
         /* Status Alert Banner */
         .status-banner {
-            background: #fef2f2;
-            border: 1px solid #fecaca;
-            border-radius: 10px;
-            padding: 12px 18px;
+            background: #fff1f2;
+            border: 1px solid #fecdd3;
+            border-radius: 8px;
+            padding: 10px 16px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
-        .status-left { display: flex; align-items: center; gap: 12px; color: #dc2626; font-weight: 800; font-size: 14px; }
-        .status-badge-num { background: #dc2626; color: #fff; padding: 2px 10px; border-radius: 12px; font-size: 12px; }
-        .status-right { font-size: 13px; font-weight: 700; color: #991b1b; }
+        .status-left { display: flex; align-items: center; gap: 10px; color: #e11d48; font-weight: 800; font-size: 13px; }
+        .status-badge-num { background: #e11d48; color: #fff; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+        .status-right { font-size: 12px; font-weight: 700; color: #9f1239; }
 
         /* Action Buttons Grid */
-        .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .action-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .btn-main {
-            padding: 12px 20px;
-            border-radius: 10px;
+            padding: 10px 18px;
+            border-radius: 8px;
             border: none;
             color: #fff;
             font-weight: 700;
-            font-size: 13px;
+            font-size: 12px;
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
             cursor: pointer;
         }
         .btn-excel { background: #059669; }
-        .btn-print { background: #1d4ed8; }
+        .btn-print { background: #0f172a; }
 
         /* Table Styling */
-        .table-card { background: #fff; border-radius: 12px; border: 1px solid #000; overflow: hidden; }
-        .excel-table { width: 100%; border-collapse: collapse; font-size: 11px; text-align: center; }
-        .excel-table th, .excel-table td { border: 1px solid #000; padding: 8px; font-weight: 600; }
+        .table-card { background: #fff; border-radius: 8px; border: 1px solid #000; overflow: hidden; }
+        .excel-table { width: 100%; border-collapse: collapse; font-size: 10px; text-align: center; }
+        .excel-table th, .excel-table td { border: 1px solid #000; padding: 6px; font-weight: 600; }
         
-        .row-dest-hdr { background: #002060; color: #fff; font-weight: 800; font-size: 12px; }
+        .row-dest-hdr { background: #e11d48; color: #fff; font-weight: 800; font-size: 11px; }
         .row-po-hdr { background: #ffffff; font-weight: 800; color: #000; }
-        .row-yellow-hdr { background: #0a192f; color: #fff; font-weight: 700; text-transform: uppercase; }
+        .row-yellow-hdr { background: #0f172a; color: #fff; font-weight: 700; text-transform: uppercase; }
 
-        .loading-overlay { display: none; text-align: center; font-weight: 700; color: var(--primary-blue); padding: 10px; }
+        .bottom-footer {
+            text-align: center;
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+
+        .loading-overlay { display: none; text-align: center; font-weight: 700; color: var(--primary-red); padding: 8px; }
 
         .slips-wrapper { display: none; }
         @media print {
@@ -250,21 +286,28 @@
 <div class="sidebar no-print">
     <div>
         <div class="brand-logo">
-            <i class="fa-solid fa-m" style="font-size: 28px; color: #ff3f6c;"></i>
-            <div>
-                <div class="brand-title">Myntra</div>
-                <div class="brand-sub">Order Suite</div>
+            <div class="brand-title">DELHIVEPY</div>
+            <div class="brand-sub">Small World</div>
+        </div>
+
+        <div class="user-profile">
+            <div class="avatar">S</div>
+            <div class="user-info">
+                <div class="name">Shantanu 👋</div>
+                <div class="role">Operations</div>
+                <div class="sub">Delhivery</div>
             </div>
         </div>
 
         <ul class="nav-list">
             <li class="nav-item active"><a href="#"><i class="fa-solid fa-house"></i> Dashboard</a></li>
             <li class="nav-item"><a href="#"><i class="fa-solid fa-file-invoice"></i> Sales Orders</a></li>
-            <li class="nav-item"><a href="#"><i class="fa-solid fa-boxes-packing"></i> Myntra PO</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-clipboard-list"></i> Myntra PO</a></li>
             <li class="nav-item"><a href="#"><i class="fa-solid fa-truck-ramp-box"></i> Challan (Pending)</a></li>
             <li class="nav-item"><a href="#"><i class="fa-solid fa-chart-line"></i> Sale Report</a></li>
             <li class="nav-item"><a href="#"><i class="fa-solid fa-folder-open"></i> Reports</a></li>
             <li class="nav-item"><a href="#"><i class="fa-solid fa-chart-pie"></i> Analytics</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-gear"></i> Settings</a></li>
             <li class="nav-item"><a href="#"><i class="fa-solid fa-circle-question"></i> Help & Support</a></li>
         </ul>
     </div>
@@ -275,15 +318,11 @@
                 <div class="status-indicator"></div>
                 System Status
             </div>
-            <p style="font-size:11px; color:#64748b; margin-top:4px;">All Systems Operational</p>
+            <p style="font-size:10px; color:#64748b; margin-top:3px;">All Systems Operational</p>
         </div>
 
-        <div class="user-profile">
-            <div class="avatar">AD</div>
-            <div>
-                <div style="font-size:12px; font-weight:700; color:#fff;">Admin User</div>
-                <div style="font-size:10px; color:#64748b;">admin@myntra.com</div>
-            </div>
+        <div class="copyright-text">
+            © 2026 Delhivery<br>All rights reserved.
         </div>
     </div>
 </div>
@@ -292,12 +331,13 @@
     <div class="no-print">
         <div class="top-header">
             <div class="top-title">
-                <h1>Myntra Order Analysis & Custom Excel Generator</h1>
+                <div class="greeting">Hello, Shantanu 👋</div>
+                <h1>B2B Order Analysis & Custom Excel Generator</h1>
                 <p>Fast & Lightweight Order Processing Dashboard</p>
             </div>
             <div class="header-widgets">
                 <div class="date-badge">
-                    <i class="fa-regular fa-calendar-days" style="color:var(--primary-blue);"></i>
+                    <i class="fa-regular fa-calendar-days"></i>
                     <span id="currentDateDisplay">29 August 2026 | 01:41 PM</span>
                 </div>
                 <button class="notif-btn">
@@ -315,7 +355,7 @@
                 <div class="card-title">Sales Order Wise Report</div>
                 <button class="btn-upload"><i class="fa-solid fa-folder-open"></i> Select File</button>
                 <input type="file" id="fileSalesOrder" accept=".xlsx, .xls, .csv" style="display:none" onchange="loadIndividualFile(event, 'sales')">
-                <div id="msg-sales" class="file-status"></div>
+                <div id="msg-sales" class="file-status">✓ Loaded: Sales Order Wise Report.xlsx</div>
             </div>
 
             <div class="upload-card c2" onclick="document.getElementById('filePO').click()">
@@ -324,7 +364,7 @@
                 <div class="card-title">Myntra PO File</div>
                 <button class="btn-upload"><i class="fa-solid fa-folder-open"></i> Select File</button>
                 <input type="file" id="filePO" accept=".xlsx, .xls, .csv" style="display:none" onchange="loadIndividualFile(event, 'po')">
-                <div id="msg-po" class="file-status"></div>
+                <div id="msg-po" class="file-status">✓ Loaded: PO-MYNJ-SAPL210826-4 (1).xlsx</div>
             </div>
 
             <div class="upload-card c3" onclick="document.getElementById('fileChallan').click()">
@@ -333,7 +373,7 @@
                 <div class="card-title">Delivery Challan (Pending Box)</div>
                 <button class="btn-upload"><i class="fa-solid fa-folder-open"></i> Select File</button>
                 <input type="file" id="fileChallan" accept=".xlsx, .xls, .csv" style="display:none" onchange="loadIndividualFile(event, 'challan')">
-                <div id="msg-challan" class="file-status"></div>
+                <div id="msg-challan" class="file-status">✓ Loaded: Book1.xlsx</div>
             </div>
 
             <div class="upload-card c4" onclick="document.getElementById('fileSaleItem').click()">
@@ -342,7 +382,7 @@
                 <div class="card-title">Sale Report Item Wise</div>
                 <button class="btn-upload"><i class="fa-solid fa-folder-open"></i> Select File</button>
                 <input type="file" id="fileSaleItem" accept=".xlsx, .xls, .csv" style="display:none" onchange="loadIndividualFile(event, 'saleItem')">
-                <div id="msg-saleItem" class="file-status"></div>
+                <div id="msg-saleItem" class="file-status">✓ Loaded: Book2.xlsx</div>
             </div>
         </div>
 
@@ -350,22 +390,23 @@
 
         <!-- Quick Filters -->
         <div class="filter-section">
-            <div class="filter-header"><i class="fa-solid fa-filter"></i> Quick Filters</div>
-            
             <div class="filter-row">
                 <div class="form-group">
-                    <label><i class="fa-solid fa-location-dot" style="color:var(--primary-blue);"></i> Destination Name (Auto)</label>
+                    <label><i class="fa-solid fa-location-dot" style="color:var(--primary-red);"></i> Destination Name (Auto)</label>
                     <input type="text" id="destInput" class="form-control" value="MYNTRA JABONG INDIA PVT LTD (BHIWANDI, THANE)" readonly>
                 </div>
                 <div class="form-group">
-                    <label><i class="fa-solid fa-list-check" style="color:var(--primary-blue);"></i> Select Order Number</label>
+                    <label><i class="fa-solid fa-list-check" style="color:var(--primary-red);"></i> Select Order Number</label>
                     <select id="orderSelect" class="form-control" onchange="onOrderSelected()">
                         <option value="">SMTS000340/26-27</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label><i class="fa-solid fa-magnifying-glass" style="color:var(--primary-blue);"></i> Search Data</label>
-                    <input type="text" id="searchInput" class="form-control" placeholder="Search SKU Code, Barcode..." onkeyup="debounceFilter()">
+                    <label><i class="fa-solid fa-magnifying-glass" style="color:var(--primary-red);"></i> Search Data</label>
+                    <div class="form-control-wrapper">
+                        <input type="text" id="searchInput" class="form-control" style="border-radius: 8px 0 0 8px;" placeholder="Search SKU Code, Barcode..." onkeyup="debounceFilter()">
+                        <button class="search-btn-addon"><i class="fa-solid fa-magnifying-glass"></i></button>
+                    </div>
                 </div>
             </div>
 
@@ -382,23 +423,27 @@
 
             <div class="action-row">
                 <button class="btn-main btn-excel" onclick="exportExactStyledExcel()">
-                    <i class="fa-solid fa-file-excel" style="font-size:20px;"></i>
+                    <i class="fa-solid fa-file-excel" style="font-size:18px;"></i>
                     <div>
                         <div>Export Matched Excel Report</div>
-                        <div style="font-size:10px; opacity:0.8;">Download Excel Report</div>
+                        <div style="font-size:9px; opacity:0.8;">Download Excel Report</div>
                     </div>
                 </button>
                 <button class="btn-main btn-print" onclick="prepareAndPrintSlips()">
-                    <i class="fa-solid fa-print" style="font-size:20px;"></i>
+                    <i class="fa-solid fa-print" style="font-size:18px;"></i>
                     <div>
                         <div>Print Packing Slips</div>
-                        <div style="font-size:10px; opacity:0.8;">Print Packing Slips</div>
+                        <div style="font-size:9px; opacity:0.8;">Print Packing Slips</div>
                     </div>
                 </button>
             </div>
         </div>
 
         <div id="summaryTableContainer" class="table-card"></div>
+    </div>
+
+    <div class="bottom-footer no-print">
+        Designed with ❤️ by Shantanu | Delhivery Operations Team
     </div>
 
     <div id="slipsContainer" class="slips-wrapper"></div>
@@ -490,7 +535,7 @@
         if (!file) return;
 
         document.getElementById('loadingOverlay').style.display = 'block';
-        document.getElementById('msg-' + type).innerText = '⌛ Loaded: ' + file.name;
+        document.getElementById('msg-' + type).innerText = '✓ Loaded: ' + file.name;
 
         setTimeout(() => {
             const reader = new FileReader();
@@ -629,15 +674,11 @@
     }
 
     function updatePackingStatus(selectedOrder, packedQty) {
-        let badge = document.getElementById('statusBadge');
-        let remBadge = document.getElementById('remQtyBadge');
-        let qtyText = document.getElementById('statusQty');
-
         let targetQty = salesOrderReqQty[selectedOrder] || 955;
         let rem = targetQty - packedQty;
 
-        qtyText.innerText = `Required Order Qty: ${targetQty}  |  Packed Challan Qty: ${packedQty}`;
-        remBadge.innerText = `${rem > 0 ? rem : 0} Qty Remaining`;
+        document.getElementById('statusQty').innerText = `Required Order Qty: ${targetQty}  |  Packed Challan Qty: ${packedQty}`;
+        document.getElementById('remQtyBadge').innerText = `${rem > 0 ? rem : 0} Qty Remaining`;
     }
 
     function renderSummaryTable(data) {
@@ -670,8 +711,8 @@
         let html = `
             <table class="excel-table">
                 <tr class="row-dest-hdr">
-                    <td style="width: 150px; background:#1e3a8a;">SHIP TO / DESTINATION</td>
-                    <td colspan="12" style="background:#002060;">${destName}</td>
+                    <td style="width: 150px; background:#e11d48;">SHIP TO / DESTINATION</td>
+                    <td colspan="12" style="background:#030712;">${destName}</td>
                 </tr>
                 <tr class="row-po-hdr">
                     <td style="background:#f1f5f9;">PO</td>
@@ -735,11 +776,11 @@
         const row1 = worksheet.addRow(['SHIP TO/DESTINATION', destName, '', '', '', '', '', '', '', '', '', '', '']);
         worksheet.mergeCells('B1:M1');
         
-        row1.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B9BD5' } };
-        row1.getCell(1).font = { bold: true, color: { argb: 'FF000000' } };
+        row1.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE11D48' } };
+        row1.getCell(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
 
-        row1.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF46B2C4' } };
-        row1.getCell(2).font = { bold: true, size: 13, color: { argb: 'FF000000' } };
+        row1.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF030712' } };
+        row1.getCell(2).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
 
         const lastRowIndex = 4 + currentDisplayedData.length - 1;
         const row2 = worksheet.addRow(['po', poDisplay, '', '', '', '', 'G.TOTAL', '', '', '', '', '', '']);
@@ -750,8 +791,8 @@
         const headers = ['SKU Code', 'Style Id', 'SKU Id', 'SIZE', 'ITEM CODE', 'ITEAM NAME', 'color', 'Ean code', 'QTY', 'MRP', 'RATE', 'box num', 'Invoice Number'];
         const row3 = worksheet.addRow(headers);
         row3.eachCell((cell) => {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFC000' } };
-            cell.font = { bold: true };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } };
+            cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
         });
 
         currentDisplayedData.forEach(item => {
@@ -764,7 +805,7 @@
         });
 
         const buffer = await workbook.xlsx.writeBuffer();
-        saveAs(new Blob([buffer]), `Myntra_Report_${poDisplay}.xlsx`);
+        saveAs(new Blob([buffer]), `B2B_Order_Report_${poDisplay}.xlsx`);
     }
 
     function prepareAndPrintSlips() {
