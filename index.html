@@ -181,6 +181,17 @@
         return str.replace(/^0+/, '');
     }
 
+    function extractOrderNo(row) {
+        if (!row) return '';
+        for (let key in row) {
+            let cleanHeader = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (cleanHeader === 'saleorderno' || cleanHeader === 'salesorderno' || cleanHeader === 'orderno' || cleanHeader === 'docno' || cleanHeader === 'challanno') {
+                return String(row[key] || '').trim();
+            }
+        }
+        return String(row['Sale Order No'] || row['Sale Order No.'] || row['Order No'] || row['ORDER_NO'] || row['DOC No'] || '').trim();
+    }
+
     function parsePOFile(worksheet) {
         let rawJson = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
         let poBarcode = '';
@@ -218,7 +229,7 @@
         let headerIdx = 0;
         for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
             let rowStr = rawJson[i].map(c => String(c)).join(' ');
-            if (rowStr.includes('BARCODE') || rowStr.includes('Order No') || rowStr.includes('REMARKS') || rowStr.includes('Customer Name') || rowStr.includes('GROSS AMOUNT') || rowStr.includes('Sale Order No')) {
+            if (rowStr.includes('BARCODE') || rowStr.includes('Order No') || rowStr.includes('Sale Order') || rowStr.includes('REMARKS') || rowStr.includes('Customer Name') || rowStr.includes('GROSS AMOUNT')) {
                 headerIdx = i;
                 break;
             }
@@ -270,7 +281,7 @@
         salesOrderReqQty = {};
         rateLookup = {};
 
-        // 1. Calculate Rate from Sale Report Item Wise (Gross Amount / Sale Qty)
+        // 1. Calculate Rate from Sale Report Item Wise
         if (datasets.saleItem.length > 0) {
             datasets.saleItem.forEach(row => {
                 let code = cleanKey(row['BARCODE'] || row['Barcode'] || row['ITEM CODE'] || row['Item Code'] || row['EAN'] || '');
@@ -287,19 +298,15 @@
         // 2. Map Customer Name and Target Pack Qty from Sales Order Report
         let orderSelect = document.getElementById('orderSelect');
         let orderOptionsHtml = '<option value="">-- Choose Order Number --</option>';
-
-        // Use Set to strictly enforce unique order numbers in dropdown list
         let uniqueOrdersSet = new Set();
 
         if (datasets.sales.length > 0) {
             datasets.sales.forEach(row => {
-                let ordNo = String(row['Sale Order No'] || row['Sale Order No.'] || row['Order No'] || row['ORDER_NO'] || row['DOC No'] || '').trim();
+                let ordNo = extractOrderNo(row);
                 let custName = row['Customer Name'] || row['CUSTOMER NAME'] || row['Customer'] || '';
-                
-                // Priority for Qty: Pick Confirm Qty > Reserved Qty > Order Qty
                 let targetQty = parseFloat(row['Pick Confirm Qty'] || row['PICK_CONFIRM_QTY'] || row['Reserved Qty'] || row['RESERVED_QTY'] || row['Order Qty'] || row['ORDER_QTY'] || 0);
 
-                if (ordNo && ordNo !== 'Order No' && ordNo !== 'Sale Order No') {
+                if (ordNo && ordNo.toLowerCase() !== 'order no' && ordNo.toLowerCase() !== 'sale order no') {
                     salesOrderLookup[ordNo] = custName;
                     if (!salesOrderReqQty[ordNo]) salesOrderReqQty[ordNo] = 0;
                     salesOrderReqQty[ordNo] += targetQty;
@@ -308,7 +315,6 @@
                 }
             });
 
-            // Iterate over Unique Orders ONLY (Prevents Multiple/Duplicate dropdown entries)
             uniqueOrdersSet.forEach(ord => {
                 orderOptionsHtml += `<option value="${ord}">${ord}</option>`;
             });
@@ -348,9 +354,15 @@
         let packedChallanQty = 0;
 
         sourceRows.forEach(row => {
-            let rowOrderNo = String(row['Sale Order No'] || row['Sale Order No.'] || row['Order No'] || row['ORDER_NO'] || row['DOC No'] || row['CHALLAN_NO'] || '').trim();
-            if (selectedOrder && rowOrderNo && rowOrderNo !== selectedOrder) {
-                return; 
+            let rowOrderNo = extractOrderNo(row);
+
+            // Match selected Order Number safely
+            if (selectedOrder && rowOrderNo) {
+                let normSelected = selectedOrder.toLowerCase().replace(/[^a-z0-9]/g, '');
+                let normRowOrder = rowOrderNo.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (normSelected !== normRowOrder) {
+                    return; 
+                }
             }
 
             let size = row['SIZE'] || row['Size'] || '-';
@@ -397,9 +409,7 @@
         globalMergedData = finalRows;
         currentDisplayedData = finalRows;
 
-        // Check Order Complete / Pending Condition
         updatePackingStatus(selectedOrder, packedChallanQty);
-
         renderSummaryTable(finalRows);
     }
 
