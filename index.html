@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>B2B Order Analysis & Custom Excel Generator</title>
     
+    <!-- Google Fonts & Font Awesome Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <!-- XLSX, ExcelJS & FileSaver Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -210,7 +212,7 @@
             font-size: 12px;
             font-weight: 600;
             color: #1e293b;
-            background: #f8fafc;
+            background: #ffffff;
         }
         .search-btn-addon {
             background: var(--primary-red);
@@ -348,6 +350,7 @@
             </div>
         </div>
 
+        <!-- 4 Upload Cards -->
         <div class="cards-grid">
             <div class="upload-card c1" onclick="document.getElementById('fileSalesOrder').click()">
                 <span class="card-num">01</span>
@@ -388,11 +391,12 @@
 
         <div id="loadingOverlay" class="loading-overlay">⏳ Processing Data... Please wait.</div>
 
+        <!-- Quick Filters -->
         <div class="filter-section">
             <div class="filter-row">
                 <div class="form-group">
-                    <label><i class="fa-solid fa-location-dot" style="color:var(--primary-red);"></i> Destination Name (Auto)</label>
-                    <input type="text" id="destInput" class="form-control" value="" placeholder="Destination will auto-populate" readonly>
+                    <label><i class="fa-solid fa-location-dot" style="color:var(--primary-red);"></i> Destination Name (Manual / Auto)</label>
+                    <input type="text" id="destInput" class="form-control" value="" placeholder="Type Destination Name..." oninput="onManualDestChange()">
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-list-check" style="color:var(--primary-red);"></i> Select Order Number</label>
@@ -464,7 +468,7 @@
     }
     
     updateLiveDateTime();
-    setInterval(updateLiveDateTime, 1000); // 1-second interval ensures real-time ticking
+    setInterval(updateLiveDateTime, 1000);
 
     let datasets = { sales: [], po: [], poBarCode: '', challan: [], saleItem: [] };
     let globalMergedData = [];
@@ -624,8 +628,6 @@
         
         if (selectedOrder && salesOrderLookup[selectedOrder]) {
             document.getElementById('destInput').value = salesOrderLookup[selectedOrder];
-        } else if (!selectedOrder) {
-            document.getElementById('destInput').value = "";
         }
 
         let poLookup = {};
@@ -693,6 +695,15 @@
         renderSummaryTable(finalRows);
     }
 
+    // Manual typing on Destination Input Updates Table Header instantly
+    function onManualDestChange() {
+        let destName = document.getElementById('destInput').value.trim() || '-';
+        let destHeaderTd = document.getElementById('destHeaderVal');
+        if (destHeaderTd) {
+            destHeaderTd.innerText = destName;
+        }
+    }
+
     function updatePackingStatus(selectedOrder, packedQty) {
         let targetQty = salesOrderReqQty[selectedOrder] || 0;
         let rem = targetQty - packedQty;
@@ -746,7 +757,7 @@
             <table class="excel-table">
                 <tr class="row-dest-hdr">
                     <td style="width: 150px; background:#e11d48;">SHIP TO / DESTINATION</td>
-                    <td colspan="12" style="background:#030712;">${destName}</td>
+                    <td id="destHeaderVal" colspan="12" style="background:#030712;">${destName}</td>
                 </tr>
                 <tr class="row-po-hdr">
                     <td style="background:#f1f5f9;">PO</td>
