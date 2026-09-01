@@ -3,16 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>B2B Order Analysis & Custom Excel Generator</title>
+    <title>Delhivery Operations & Logistics Suite</title>
     
     <!-- Google Fonts & Font Awesome Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- XLSX, ExcelJS & FileSaver Libraries -->
+    <!-- External Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
     <style>
         :root {
@@ -41,10 +43,7 @@
             flex-shrink: 0;
         }
 
-        .brand-logo {
-            padding: 0 8px;
-            margin-bottom: 24px;
-        }
+        .brand-logo { padding: 0 8px; margin-bottom: 24px; }
         .brand-title { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; color: #ffffff; line-height: 1; }
         .brand-sub { font-size: 11px; color: var(--primary-red); font-weight: 700; margin-top: 4px; }
 
@@ -73,24 +72,28 @@
         .user-info .sub { font-size: 10px; color: #64748b; }
 
         .nav-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
-        .nav-item a {
+        .nav-item button {
+            width: 100%;
             display: flex;
             align-items: center;
             gap: 12px;
             padding: 10px 14px;
             color: #94a3b8;
-            text-decoration: none;
+            background: transparent;
+            border: none;
             border-radius: 10px;
             font-size: 13px;
             font-weight: 600;
             transition: all 0.2s;
+            cursor: pointer;
+            text-align: left;
         }
-        .nav-item.active a {
+        .nav-item.active button {
             background-color: var(--primary-red);
             color: #fff;
             box-shadow: 0 4px 12px rgba(225, 29, 72, 0.35);
         }
-        .nav-item a:hover:not(.active) {
+        .nav-item button:hover:not(.active) {
             background-color: #111827;
             color: #f1f5f9;
         }
@@ -134,18 +137,12 @@
             font-weight: 700;
         }
         .date-badge i { color: var(--primary-red); }
-        .notif-btn { 
-            background: #030712; 
-            color: #fff;
-            border: none; 
-            padding: 10px 12px; 
-            border-radius: 10px; 
-            cursor: pointer; 
-            position: relative; 
-        }
-        .notif-badge { position: absolute; top: -3px; right: -3px; background: var(--primary-red); color: #fff; font-size: 9px; padding: 2px 5px; border-radius: 10px; font-weight: 800; }
 
-        /* 4 Cards Grid */
+        /* View Containers */
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+
+        /* B2B Dashboard Cards Grid */
         .cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
         .upload-card {
             background: #fff;
@@ -202,6 +199,7 @@
             margin-bottom: 20px;
         }
         .filter-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        .form-group { margin-bottom: 16px; text-align: left; }
         .form-group label { font-size: 11px; font-weight: 700; color: #334155; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
         .form-control-wrapper { display: flex; align-items: center; }
         .form-control {
@@ -276,20 +274,83 @@
         .loading-overlay { display: none; text-align: center; font-weight: 700; color: var(--primary-red); padding: 8px; }
         .empty-table-msg { text-align: center; padding: 40px; color: var(--text-muted); font-size: 13px; font-weight: 600; }
 
-        .slips-wrapper { display: none; }
+        /* Box Label & Pick List Custom Tool Styles */
+        .tool-panel {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .upload-box {
+            border: 2px dashed #fca5a5;
+            background: #fff5f5;
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .upload-box:hover { border-color: #d90429; background: #ffeef0; }
+        .upload-info { display: flex; align-items: center; gap: 15px; }
+        .upload-icon {
+            width: 40px;
+            height: 40px;
+            background: #ffe4e6;
+            color: #d90429;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .upload-text-main { font-weight: 700; font-size: 13.5px; color: #1e293b; }
+        .upload-text-sub { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+        .file-badge { background: #f1f5f9; color: #d90429; font-weight: 800; font-size: 10px; padding: 4px 8px; border-radius: 6px; border: 1px solid #cbd5e1; }
+        
+        .radio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .radio-card { 
+            background: #ffffff; 
+            border: 1px solid #e2e8f0; 
+            padding: 12px 16px; 
+            border-radius: 12px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between;
+            cursor: pointer; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .radio-card-info h5 { font-size: 12.5px; font-weight: 700; color: #0f172a; margin-bottom: 2px; }
+        .radio-card-info p { font-size: 11px; color: #64748b; }
+
+        .btn-group { display: flex; gap: 12px; margin-top: 25px; }
+        .btn-action, .btn-print-tool, .btn-preview { 
+            flex: 1; padding: 12px 16px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.25s ease; display: flex; align-items: center; justify-content: center; gap: 8px; 
+        }
+        .btn-preview { background: #ffffff; color: #d90429; border: 1.5px solid #d90429; }
+        .btn-action { background: #d90429; color: #ffffff; border: none; box-shadow: 0 4px 12px rgba(217, 4, 41, 0.3); }
+        .btn-print-tool { background: #0f172a; color: #ffffff; border: none; }
+        .btn-action:disabled, .btn-print-tool:disabled, .btn-preview:disabled { background: #e2e8f0; color: #94a3b8; border-color: #cbd5e1; cursor: not-allowed; box-shadow: none; }
+
+        .status-msg { margin-top: 15px; font-size: 13px; font-weight: 700; padding: 8px; text-align: center; }
+        .preview-container { display: none; margin-top: 20px; border: 1px solid #cbd5e1; border-radius: 12px; overflow: hidden; background: #ffffff; }
+        .preview-container iframe { width: 100%; height: 450px; border: none; }
+
         @media print {
-            body { background: white; padding: 0; }
             .no-print { display: none !important; }
-            .slips-wrapper { display: block !important; }
         }
     </style>
 </head>
 <body>
 
+<!-- Sidebar Menu -->
 <div class="sidebar no-print">
     <div>
         <div class="brand-logo">
-            <div class="brand-title">DELHIVEPY</div>
+            <div class="brand-title">DELHIVERY</div>
             <div class="brand-sub">Small World</div>
         </div>
 
@@ -302,16 +363,25 @@
             </div>
         </div>
 
+        <!-- Dynamic Navigation Links -->
         <ul class="nav-list">
-            <li class="nav-item active"><a href="#"><i class="fa-solid fa-house"></i> Dashboard</a></li>
-            <li class="nav-item"><a href="#"><i class="fa-solid fa-file-invoice"></i> Sales Orders</a></li>
-            <li class="nav-item"><a href="#"><i class="fa-solid fa-clipboard-list"></i> B2B PO File</a></li>
-            <li class="nav-item"><a href="#"><i class="fa-solid fa-truck-ramp-box"></i> Challan (Pending)</a></li>
-            <li class="nav-item"><a href="#"><i class="fa-solid fa-chart-line"></i> Sale Report</a></li>
-            <li class="nav-item"><a href="#"><i class="fa-solid fa-folder-open"></i> Reports</a></li>
-            <li class="nav-item"><a href="#"><i class="fa-solid fa-chart-pie"></i> Analytics</a></li>
-            <li class="nav-item"><a href="#"><i class="fa-solid fa-gear"></i> Settings</a></li>
-            <li class="nav-item"><a href="#"><i class="fa-solid fa-circle-question"></i> Help & Support</a></li>
+            <li class="nav-item active" id="nav-dashboard">
+                <button onclick="switchMainView('dashboard')"><i class="fa-solid fa-house"></i> Dashboard</button>
+            </li>
+            <li class="nav-item" id="nav-b2b">
+                <button onclick="switchMainView('dashboard')"><i class="fa-solid fa-chart-pie"></i> B2B Order Analysis</button>
+            </li>
+            <li class="nav-item" id="nav-boxlabel">
+                <button onclick="switchMainView('boxlabel')"><i class="fa-solid fa-box-archive"></i> Smart Box Label Studio</button>
+            </li>
+            <li class="nav-item" id="nav-picklist">
+                <button onclick="switchMainView('picklist')"><i class="fa-solid fa-clipboard-list"></i> Pick List Generator</button>
+            </li>
+            <li class="nav-item"><button onclick="switchMainView('dashboard')"><i class="fa-solid fa-file-invoice"></i> Sales Orders</button></li>
+            <li class="nav-item"><button onclick="switchMainView('dashboard')"><i class="fa-solid fa-truck-ramp-box"></i> Challan (Pending)</button></li>
+            <li class="nav-item"><button onclick="switchMainView('dashboard')"><i class="fa-solid fa-chart-line"></i> Sale Report</button></li>
+            <li class="nav-item"><button onclick="switchMainView('dashboard')"><i class="fa-solid fa-gear"></i> Settings</button></li>
+            <li class="nav-item"><button onclick="switchMainView('dashboard')"><i class="fa-solid fa-circle-question"></i> Help & Support</button></li>
         </ul>
     </div>
 
@@ -331,25 +401,25 @@
 </div>
 
 <div class="main-wrapper">
+    <!-- Top Header -->
     <div class="no-print">
         <div class="top-header">
             <div class="top-title">
                 <div class="greeting">Hello, Shantanu 👋</div>
-                <h1>B2B Order Analysis & Custom Excel Generator</h1>
-                <p>Fast & Lightweight Order Processing Dashboard</p>
+                <h1 id="pageMainTitle">B2B Order Analysis & Custom Excel Generator</h1>
+                <p id="pageMainSub">Fast & Lightweight Order Processing Dashboard</p>
             </div>
             <div class="header-widgets">
                 <div class="date-badge">
                     <i class="fa-regular fa-calendar-days"></i>
                     <span id="currentDateDisplay">-- -- ---- | --:--:-- --</span>
                 </div>
-                <button class="notif-btn">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="notif-badge">0</span>
-                </button>
             </div>
         </div>
+    </div>
 
+    <!-- VIEW 1: B2B Order Analysis Dashboard -->
+    <div id="viewDashboard" class="view-section active">
         <!-- 4 Upload Cards -->
         <div class="cards-grid">
             <div class="upload-card c1" onclick="document.getElementById('fileSalesOrder').click()">
@@ -432,7 +502,7 @@
                         <div style="font-size:9px; opacity:0.8;">Download Excel Report</div>
                     </div>
                 </button>
-                <button class="btn-main btn-print" onclick="prepareAndPrintSlips()">
+                <button class="btn-main btn-print" onclick="window.print()">
                     <i class="fa-solid fa-print" style="font-size:18px;"></i>
                     <div>
                         <div>Print Packing Slips</div>
@@ -447,29 +517,176 @@
         </div>
     </div>
 
+    <!-- VIEW 2: Smart Box Label Studio -->
+    <div id="viewBoxLabel" class="view-section">
+        <div class="tool-panel">
+            <h2 style="font-size:22px; font-weight:800; margin-bottom:6px; color:#0f172a;">Smart Box <span style="color:var(--primary-red);">Label Studio</span></h2>
+            <p style="font-size:13px; color:#64748b; margin-bottom:20px;">Upload Excel & Generate Outer Box Labels</p>
+
+            <div class="form-group">
+                <label for="excelFileLabel">
+                    <div class="upload-box">
+                        <div class="upload-info">
+                            <div class="upload-icon">⬆️</div>
+                            <div>
+                                <div class="upload-text-main" id="fileLabelText">SELECT EXCEL FILE</div>
+                                <div class="upload-text-sub">Drag & drop your Excel file here or click to browse</div>
+                            </div>
+                        </div>
+                        <span class="file-badge">XLSX / XLS</span>
+                    </div>
+                </label>
+                <input type="file" id="excelFileLabel" accept=".xlsx, .xls, .csv" style="display:none" onchange="handleFileLabel(this)">
+            </div>
+
+            <div class="form-group">
+                <label style="font-size: 11px; font-weight: 800; color: #d90429; margin-bottom: 10px; display:block;">PRINT ORIENTATION / STICKER SIZE:</label>
+                <div class="radio-grid">
+                    <label class="radio-card">
+                        <div class="radio-card-info">
+                            <h5>PORTRAIT (4" X 6")</h5>
+                            <p>Standard vertical layout</p>
+                        </div>
+                        <input type="radio" name="pageOrientation" value="p">
+                    </label>
+                    <label class="radio-card">
+                        <div class="radio-card-info">
+                            <h5>LANDSCAPE (6" X 4")</h5>
+                            <p>Wide horizontal layout</p>
+                        </div>
+                        <input type="radio" name="pageOrientation" value="l">
+                    </label>
+                    <label class="radio-card">
+                        <div class="radio-card-info">
+                            <h5>A4 (1 BOX/PAGE)</h5>
+                            <p>One box per page</p>
+                        </div>
+                        <input type="radio" name="pageOrientation" value="a4_1">
+                    </label>
+                    <label class="radio-card">
+                        <div class="radio-card-info">
+                            <h5>A4 (2 BOXES/PAGE)</h5>
+                            <p>Two boxes per page</p>
+                        </div>
+                        <input type="radio" name="pageOrientation" value="a4_2" checked>
+                    </label>
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-preview" id="prevLabelBtn" disabled onclick="processBoxLabels('preview')">👁️ Preview PDF</button>
+                <button class="btn-action" id="genLabelBtn" disabled onclick="processBoxLabels('download')">📥 Download Labels PDF</button>
+                <button class="btn-print-tool" id="printLabelBtn" disabled onclick="processBoxLabels('print')">🖨️ Print Labels Direct</button>
+            </div>
+
+            <div id="statusLabel" class="status-msg"></div>
+            <div id="previewContainerLabel" class="preview-container">
+                <iframe id="pdfFrameLabel"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW 3: Pick List Generator -->
+    <div id="viewPickList" class="view-section">
+        <div class="tool-panel">
+            <h2 style="font-size:22px; font-weight:800; margin-bottom:6px; color:#0f172a;">Advanced <span style="color:var(--primary-red);">Pick List Generator</span></h2>
+            <p style="font-size:13px; color:#64748b; margin-bottom:20px;">Upload Excel, select filter & export/print bordered PDF.</p>
+
+            <div class="form-group">
+                <label for="excelFilePick">
+                    <div class="upload-box">
+                        <div class="upload-info">
+                            <div class="upload-icon">⬆️</div>
+                            <div>
+                                <div class="upload-text-main" id="filePickText">SELECT EXCEL FILE</div>
+                                <div class="upload-text-sub">Upload pick list sheet to start</div>
+                            </div>
+                        </div>
+                        <span class="file-badge">XLSX / XLS</span>
+                    </div>
+                </label>
+                <input type="file" id="excelFilePick" accept=".xlsx, .xls, .csv" style="display:none" onchange="handleFilePick(this)">
+            </div>
+
+            <div class="form-group">
+                <label style="font-size: 11px; font-weight: 800; color: #d90429; margin-bottom: 6px; display:block;">SELECT PICK LIST NO:</label>
+                <select id="picklistSelect" class="form-control" disabled>
+                    <option value="ALL">-- ALL PICK LISTS --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label style="font-size: 11px; font-weight: 800; color: #d90429; margin-bottom: 6px; display:block;">PICKING VIEW TYPE (PAGE BREAK MODE):</label>
+                <select id="viewModeSelect" class="form-control">
+                    <option value="ITEM">ITEM Wise (Each Item on Separate Page)</option>
+                    <option value="BARCODE">BARCODE Wise (Each Barcode on Separate Page)</option>
+                    <option value="MIX">As Is / Mix (Continuous Single Document)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label style="font-size: 11px; font-weight: 800; color: #d90429; margin-bottom: 6px; display:block;">BIN NO SORTING ORDER:</label>
+                <select id="binSortSelect" class="form-control">
+                    <option value="ASC">BIN NO: Ascending (A ➔ Z)</option>
+                    <option value="DESC">BIN NO: Descending (Z ➔ A)</option>
+                </select>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-preview" id="prevPickBtn" disabled onclick="processPickList('preview')">👁️ Preview PDF</button>
+                <button class="btn-action" id="genPickBtn" disabled onclick="processPickList('download')">📥 PDF Download</button>
+                <button class="btn-print-tool" id="printPickBtn" disabled onclick="processPickList('print')">🖨️ Direct Print</button>
+            </div>
+
+            <div id="statusPick" class="status-msg"></div>
+            <div id="previewContainerPick" class="preview-container">
+                <iframe id="pdfFramePick"></iframe>
+            </div>
+        </div>
+    </div>
+
     <div class="bottom-footer no-print">
         Designed with ❤️ by Shantanu | Delhivery Operations Team
     </div>
-
-    <div id="slipsContainer" class="slips-wrapper"></div>
 </div>
 
 <script>
-    // Precise Real-Time Live Date & Time Tracker
+    // Live Clock
     function updateLiveDateTime() {
         const now = new Date();
         const optionsDate = { day: '2-digit', month: 'short', year: 'numeric' };
         const optionsTime = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
-        
-        const formattedDate = now.toLocaleDateString('en-GB', optionsDate);
-        const formattedTime = now.toLocaleTimeString('en-US', optionsTime);
-
-        document.getElementById('currentDateDisplay').innerText = `${formattedDate} | ${formattedTime}`;
+        document.getElementById('currentDateDisplay').innerText = `${now.toLocaleDateString('en-GB', optionsDate)} | ${now.toLocaleTimeString('en-US', optionsTime)}`;
     }
-    
     updateLiveDateTime();
     setInterval(updateLiveDateTime, 1000);
 
+    // View Switcher logic
+    function switchMainView(viewName) {
+        document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+
+        if(viewName === 'dashboard') {
+            document.getElementById('viewDashboard').classList.add('active');
+            document.getElementById('nav-dashboard').classList.add('active');
+            document.getElementById('pageMainTitle').innerText = "B2B Order Analysis & Custom Excel Generator";
+            document.getElementById('pageMainSub').innerText = "Fast & Lightweight Order Processing Dashboard";
+        } else if(viewName === 'boxlabel') {
+            document.getElementById('viewBoxLabel').classList.add('active');
+            document.getElementById('nav-boxlabel').classList.add('active');
+            document.getElementById('pageMainTitle').innerText = "Smart Box Label Studio";
+            document.getElementById('pageMainSub').innerText = "Generate and print professional outer box labels";
+        } else if(viewName === 'picklist') {
+            document.getElementById('viewPickList').classList.add('active');
+            document.getElementById('nav-picklist').classList.add('active');
+            document.getElementById('pageMainTitle').innerText = "Advanced Pick List Generator";
+            document.getElementById('pageMainSub').innerText = "Generate structured pick lists with bin-wise sorting";
+        }
+    }
+
+    /* ==========================================================
+       SECTION 1: B2B Order Analysis Engine & Order Wise Linkage
+       ========================================================== */
     let datasets = { sales: [], po: [], poBarCode: '', challan: [], saleItem: [] };
     let globalMergedData = [];
     let currentDisplayedData = [];
@@ -589,7 +806,6 @@
                 let code = cleanKey(row['BARCODE'] || row['Barcode'] || row['ITEM CODE'] || '');
                 let grossAmt = parseFloat(row['GROSS AMOUNT'] || row['Gross Amount'] || 0);
                 let saleQty = parseFloat(row['SALE QTY'] || row['Sale Qty'] || 1);
-                
                 if (code) {
                     rateLookup[code] = (saleQty > 0 && grossAmt > 0) ? (grossAmt / saleQty) : 0;
                 }
@@ -643,6 +859,16 @@
 
         let finalRows = [];
         let sourceRows = datasets.challan.length > 0 ? datasets.challan : datasets.po;
+
+        // ORDER-WISE FILTER AUTOMATION: Filter Delivery Challan data by selected Order No if applicable
+        if (selectedOrder && datasets.challan.length > 0) {
+            let filteredChallan = datasets.challan.filter(r => {
+                let rowOrd = extractOrderNo(r);
+                return !rowOrd || rowOrd === selectedOrder;
+            });
+            if (filteredChallan.length > 0) sourceRows = filteredChallan;
+        }
+
         let packedChallanQty = 0;
 
         sourceRows.forEach(row => {
@@ -695,13 +921,10 @@
         renderSummaryTable(finalRows);
     }
 
-    // Manual typing on Destination Input Updates Table Header instantly
     function onManualDestChange() {
         let destName = document.getElementById('destInput').value.trim() || '-';
         let destHeaderTd = document.getElementById('destHeaderVal');
-        if (destHeaderTd) {
-            destHeaderTd.innerText = destName;
-        }
+        if (destHeaderTd) destHeaderTd.innerText = destName;
     }
 
     function updatePackingStatus(selectedOrder, packedQty) {
@@ -826,7 +1049,6 @@
         
         row1.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE11D48' } };
         row1.getCell(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-
         row1.getCell(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF030712' } };
         row1.getCell(2).font = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } };
 
@@ -856,12 +1078,536 @@
         saveAs(new Blob([buffer]), `B2B_Order_Report_${poDisplay}.xlsx`);
     }
 
-    function prepareAndPrintSlips() {
-        if(currentDisplayedData.length === 0) {
-            alert("No data available to print!");
-            return;
+    /* ==========================================================
+       SECTION 2: Smart Box Label Studio Engine (Unchanged Original)
+       ========================================================== */
+    let rawSheetRowsLabel = [];
+
+    function handleFileLabel(input) {
+        if (input.files.length > 0) {
+            let file = input.files[0];
+            document.getElementById('fileLabelText').innerText = "✓ LOADED: " + file.name.toUpperCase();
+            
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let data = new Uint8Array(e.target.result);
+                    let workbook = XLSX.read(data, { type: 'array' });
+                    let worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    rawSheetRowsLabel = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+
+                    document.getElementById('prevLabelBtn').disabled = false;
+                    document.getElementById('genLabelBtn').disabled = false;
+                    document.getElementById('printLabelBtn').disabled = false;
+                    setLabelStatus("Box Label Excel loaded successfully!", "#16a34a");
+                } catch (err) {
+                    setLabelStatus("Error reading Excel: " + err.message, "#d90429");
+                }
+            };
+            reader.readAsArrayBuffer(file);
         }
-        window.print();
+    }
+
+    function setLabelStatus(msg, color = '#d90429') {
+        let st = document.getElementById('statusLabel');
+        st.style.color = color;
+        st.innerText = msg;
+    }
+
+    function processBoxLabels(actionType = 'download') {
+        if (!rawSheetRowsLabel || rawSheetRowsLabel.length === 0) return;
+        setLabelStatus("Processing Box Data...", "#d90429");
+
+        setTimeout(() => {
+            try {
+                let selectedOrientation = "a4_2";
+                let radioElems = document.getElementsByName('pageOrientation');
+                for (let r of radioElems) {
+                    if (r.checked) {
+                        selectedOrientation = r.value;
+                        break;
+                    }
+                }
+
+                let shipToVal = "";
+                let poVal = "";
+
+                for (let r = 0; r < rawSheetRowsLabel.length; r++) {
+                    let rowVals = rawSheetRowsLabel[r].map(c => String(c).trim());
+                    for (let c = 0; c < rowVals.length; c++) {
+                        let cellVal = rowVals[c];
+                        let upper = cellVal.toUpperCase();
+                        if (!shipToVal && (upper.includes("SHIP TO") || upper.includes("DESTINATION"))) {
+                            shipToVal = rowVals[c + 1] || cellVal.split(":")[1] || shipToVal;
+                        }
+                        if (!poVal && (upper.includes("PO NO") || upper.includes("PO NUMBER") || upper.includes("PO_NO") || upper === "PO" || upper.includes("PURCHASE ORDER"))) {
+                            poVal = rowVals[c + 1] || cellVal.split(":")[1] || poVal;
+                        }
+                    }
+                }
+
+                let headerRowIndex = -1;
+                for (let r = 0; r < Math.min(15, rawSheetRowsLabel.length); r++) {
+                    let rowStr = rawSheetRowsLabel[r].map(c => String(c).toLowerCase()).join(" ");
+                    if (rowStr.includes("sku") || rowStr.includes("fsn") || rowStr.includes("ean") || rowStr.includes("article code") || rowStr.includes("box count") || rowStr.includes("qty") || rowStr.includes("style")) {
+                        headerRowIndex = r;
+                        break;
+                    }
+                }
+
+                if (headerRowIndex === -1) {
+                    setLabelStatus("Header row not detected in Excel!", "#d90429");
+                    return;
+                }
+
+                let originalHeaders = rawSheetRowsLabel[headerRowIndex].map(h => String(h).trim());
+                let headersLower = originalHeaders.map(h => h.toLowerCase());
+
+                let boxColIdx = headersLower.findIndex(h => h.includes("box count") || h.includes("box") || h.includes("carton"));
+                let poColIdx = headersLower.findIndex(h => h.includes("po no") || h.includes("po_no") || h.includes("po number") || h === "po" || h.includes("purchase order"));
+                let challanColIdx = headersLower.findIndex(h => h.includes("challan") || h.includes("ch_no"));
+                let invColIdx = headersLower.findIndex(h => h.includes("invoice") || h.includes("inv"));
+
+                let dynamicTableCols = [];
+                originalHeaders.forEach((h, idx) => {
+                    let hLower = h.toLowerCase();
+                    if (!h || idx === boxColIdx || idx === poColIdx || idx === challanColIdx || idx === invColIdx) return;
+                    dynamicTableCols.push({ name: h, idx: idx });
+                });
+
+                let boxesMap = new Map();
+
+                for (let i = headerRowIndex + 1; i < rawSheetRowsLabel.length; i++) {
+                    let row = rawSheetRowsLabel[i];
+                    if (!row || row.length === 0) continue;
+
+                    let boxNo = boxColIdx !== -1 ? String(row[boxColIdx] || '').trim() : "1";
+                    if (!boxNo) continue;
+
+                    let challan = challanColIdx !== -1 ? String(row[challanColIdx] || '').trim() : "";
+                    let invNo = invColIdx !== -1 ? String(row[invColIdx] || '').trim() : "";
+                    let rowPo = poColIdx !== -1 ? String(row[poColIdx] || '').trim() : "";
+                    if (!rowPo) rowPo = poVal;
+
+                    let itemObj = {};
+                    let hasData = false;
+
+                    dynamicTableCols.forEach(col => {
+                        let val = row[col.idx] !== undefined ? String(row[col.idx]).trim() : "";
+                        let isRateCol = col.name.toLowerCase().includes("rate") || col.name.toLowerCase().includes("price");
+                        if (isRateCol && val !== "" && val !== "-") {
+                            let numVal = parseFloat(val);
+                            if (!isNaN(numVal)) {
+                                val = (Math.round(numVal * 100) / 100).toFixed(2);
+                            }
+                        }
+                        itemObj[col.name] = val;
+                        if (val !== "" && val !== "-") hasData = true;
+                    });
+
+                    if (!hasData) continue;
+
+                    if (!boxesMap.has(boxNo)) {
+                        boxesMap.set(boxNo, { boxNo, shipTo: shipToVal, poOrd: rowPo, challanNo: challan, invNo, items: [] });
+                    }
+
+                    let b = boxesMap.get(boxNo);
+                    if (!b.poOrd && rowPo) b.poOrd = rowPo;
+                    if (!b.challanNo && challan) b.challanNo = challan;
+                    if (!b.invNo && invNo) b.invNo = invNo;
+                    b.items.push(itemObj);
+                }
+
+                let boxesArray = Array.from(boxesMap.values());
+                let totalBoxesCount = boxesArray.length;
+
+                if (totalBoxesCount === 0) {
+                    setLabelStatus("No Box Data Found!", "#d90429");
+                    return;
+                }
+
+                const { jsPDF } = window.jspdf;
+                let doc = new jsPDF('p', 'mm', 'a4');
+
+                function renderLabelBox(d, bData, x, y, width) {
+                    let boxBlockWidth = Math.max(30, width * 0.18); 
+                    let leftColWidth = width - boxBlockWidth;
+
+                    let metaLines = [];
+                    if (bData.shipTo && bData.shipTo !== "-") metaLines.push(`SHIP TO / DEST: ${bData.shipTo}`);
+                    if (bData.poOrd && bData.poOrd !== "-") metaLines.push(`PO/ORD: ${bData.poOrd}`);
+                    if (bData.challanNo && bData.challanNo !== "-") metaLines.push(`CHALLAN NO: ${bData.challanNo}`);
+                    if (bData.invNo && bData.invNo !== "-") metaLines.push(`INV NO: ${bData.invNo}`);
+
+                    let headerFontSize = 9.5; 
+                    d.setFontSize(headerFontSize);
+                    d.setFont("helvetica", "bold");
+
+                    let maxLeftTextWidth = leftColWidth - 4;
+                    let totalHeaderLines = 0;
+                    metaLines.forEach(l => {
+                        let wrapped = d.splitTextToSize(l, maxLeftTextWidth);
+                        totalHeaderLines += wrapped.length;
+                    });
+
+                    let headerHeight = Math.max(22, totalHeaderLines * 4.5 + 4);
+
+                    d.setFontSize(headerFontSize);
+                    d.setFont("helvetica", "bold");
+                    d.setTextColor(0, 0, 0);
+
+                    let currentY = y + 4.5;
+                    metaLines.forEach((lineText) => {
+                        let lines = d.splitTextToSize(lineText, maxLeftTextWidth);
+                        lines.forEach(l => {
+                            d.text(l, x + 2, currentY);
+                            currentY += 4.5;
+                        });
+                    });
+
+                    let rCenterX = x + leftColWidth + (boxBlockWidth / 2);
+                    d.setFontSize(8);
+                    d.setFont("helvetica", "bold");
+                    d.text("BOX NO.", rCenterX, y + 6, { align: "center" });
+
+                    d.setFontSize(12);
+                    d.text(`${bData.boxNo} / ${totalBoxesCount}`, rCenterX, y + 14, { align: "center" });
+
+                    d.setLineWidth(0.6);
+                    d.line(x, y + headerHeight, x + width, y + headerHeight);
+                    d.line(x + leftColWidth, y, x + leftColWidth, y + headerHeight);
+
+                    let activeHeaders = dynamicTableCols.filter(col => {
+                        let lowerName = col.name.toLowerCase();
+                        if (lowerName.includes("qty") || lowerName.includes("quantity")) return true;
+                        return bData.items.some(item => {
+                            let v = item[col.name];
+                            return v !== undefined && v !== null && v !== "" && v !== "-";
+                        });
+                    }).map(col => col.name);
+
+                    let tableHeaders = [activeHeaders];
+                    let tableBody = bData.items.map(item => {
+                        return activeHeaders.map(hName => {
+                            let val = item[hName];
+                            return (val !== undefined && val !== null && val !== "") ? val : "-";
+                        });
+                    });
+
+                    let qtyHeaderName = activeHeaders.find(h => h.toLowerCase().includes("qty") || h.toLowerCase().includes("quantity"));
+                    let totalQty = bData.items.reduce((sum, item) => {
+                        let q = qtyHeaderName ? parseInt(item[qtyHeaderName]) : 1;
+                        return sum + (isNaN(q) ? 1 : q);
+                    }, 0);
+
+                    d.autoTable({
+                        startY: y + headerHeight + 1,
+                        margin: { left: x, right: (d.internal.pageSize.width - (x + width)) },
+                        head: tableHeaders,
+                        body: tableBody,
+                        theme: 'grid',
+                        styles: { 
+                            fontSize: 6.5, 
+                            cellPadding: 1.2,
+                            halign: 'center', 
+                            valign: 'middle',
+                            textColor: [0, 0, 0], 
+                            lineColor: [0, 0, 0], 
+                            lineWidth: 0.4,
+                            fontStyle: 'bold',
+                            overflow: 'linebreak'
+                        },
+                        headStyles: { 
+                            fillColor: [0, 0, 0], 
+                            textColor: [255, 255, 255], 
+                            fontStyle: 'bold',
+                            cellPadding: 1.8,
+                            lineWidth: 0.4,
+                            lineColor: [0, 0, 0]
+                        },
+                        didParseCell: function(data) {
+                            if (data.cell.raw && String(data.cell.raw).length > 22) {
+                                data.cell.styles.fontSize = 5.2; 
+                            }
+                        },
+                        tableWidth: width
+                    });
+
+                    let finalY = d.lastAutoTable.finalY;
+
+                    let footerHeight = 6;
+                    d.setLineWidth(0.6);
+                    d.rect(x, finalY, width, footerHeight);
+
+                    d.setFontSize(7.5);
+                    d.setFont("helvetica", "bold");
+                    d.setTextColor(0, 0, 0);
+                    d.text("TOTAL BOX QTY", x + 3, finalY + 4.2);
+
+                    let qtyColWidth = width * 0.15;
+                    d.line(x + width - qtyColWidth, finalY, x + width - qtyColWidth, finalY + footerHeight);
+                    d.text(String(totalQty), x + width - (qtyColWidth / 2), finalY + 4.2, { align: "center" });
+
+                    let boxTotalHeight = (finalY + footerHeight) - y;
+                    d.rect(x, y, width, boxTotalHeight);
+                    return boxTotalHeight;
+                }
+
+                let pageHeight = doc.internal.pageSize.height;
+                let halfPageHeight = (pageHeight / 2) - 10;
+
+                for (let i = 0; i < boxesArray.length; i++) {
+                    let bData = boxesArray[i];
+                    let estimatedHeight = 25 + (bData.items.length * 6) + 10;
+
+                    if (selectedOrientation === "a4_2") {
+                        let isFitsInHalf = estimatedHeight <= halfPageHeight;
+
+                        if (isFitsInHalf) {
+                            let nextFitsInHalf = false;
+                            if (i + 1 < boxesArray.length) {
+                                let nextBox = boxesArray[i + 1];
+                                let nextEstimated = 25 + (nextBox.items.length * 6) + 10;
+                                if (nextEstimated <= halfPageHeight) {
+                                    nextFitsInHalf = true;
+                                }
+                            }
+
+                            if (nextFitsInHalf) {
+                                if (i > 0) doc.addPage('a4', 'p');
+                                renderLabelBox(doc, bData, 10, 8, 190);
+                                i++;
+                                renderLabelBox(doc, boxesArray[i], 10, (pageHeight / 2) + 4, 190);
+                            } else {
+                                if (i > 0) doc.addPage('a4', 'p');
+                                renderLabelBox(doc, bData, 10, 8, 190);
+                            }
+                        } else {
+                            if (i > 0) doc.addPage('a4', 'p');
+                            renderLabelBox(doc, bData, 10, 8, 190);
+                        }
+                    } else if (selectedOrientation === "a4_1") {
+                        if (i > 0) doc.addPage('a4', 'p');
+                        renderLabelBox(doc, bData, 10, 8, 190);
+                    } else {
+                        if (i > 0) doc.addPage(selectedOrientation === 'l' ? [152, 101.6] : [101.6, 152]);
+                        renderLabelBox(doc, bData, 5, 5, selectedOrientation === 'l' ? 142 : 91.6);
+                    }
+                }
+
+                let pdfDataUrl = doc.output('bloburl');
+                if (actionType === 'preview') {
+                    document.getElementById('previewContainerLabel').style.display = 'block';
+                    document.getElementById('pdfFrameLabel').src = pdfDataUrl;
+                    setLabelStatus(`✓ Box Labels Preview Loaded! (${totalBoxesCount} Boxes)`, "#16a34a");
+                } else if (actionType === 'print') {
+                    doc.autoPrint();
+                    window.open(pdfDataUrl, '_blank');
+                    setLabelStatus("✓ Print Window Opened!", "#16a34a");
+                } else {
+                    doc.save(`Box_Labels_A4_${totalBoxesCount}_Boxes.pdf`);
+                    setLabelStatus("✓ Labels PDF Downloaded!", "#16a34a");
+                }
+
+            } catch (err) {
+                setLabelStatus("Error: " + err.message, "#d90429");
+            }
+        }, 100);
+    }
+
+    /* ==========================================================
+       SECTION 3: Pick List Generator Engine
+       ========================================================== */
+    let rawJsonDataPick = [];
+    const qrSvgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><rect width="100" height="100" fill="white"/><rect x="10" y="10" width="30" height="30" fill="#d90429"/><rect x="15" y="15" width="20" height="20" fill="white"/><rect x="20" y="20" width="10" height="10" fill="#d90429"/><rect x="60" y="10" width="30" height="30" fill="#d90429"/><rect x="65" y="15" width="20" height="20" fill="white"/><rect x="70" y="20" width="10" height="10" fill="#d90429"/><rect x="10" y="60" width="30" height="30" fill="#d90429"/><rect x="15" y="65" width="20" height="20" fill="white"/><rect x="20" y="70" width="10" height="10" fill="#d90429"/><rect x="45" y="10" width="10" height="10" fill="#1e293b"/><rect x="45" y="30" width="10" height="10" fill="#1e293b"/><rect x="10" y="45" width="10" height="10" fill="#1e293b"/><rect x="30" y="45" width="10" height="10" fill="#1e293b"/><rect x="60" y="45" width="15" height="15" fill="#1e293b"/><rect x="45" y="60" width="15" height="15" fill="#1e293b"/><rect x="75" y="60" width="15" height="15" fill="#1e293b"/><rect x="60" y="80" width="10" height="10" fill="#1e293b"/><rect x="80" y="80" width="10" height="10" fill="#1e293b"/></svg>`;
+    const qrDataUrl = "data:image/svg+xml;base64," + btoa(qrSvgString);
+
+    function setPickStatus(msg, color = '#d90429') {
+        let st = document.getElementById('statusPick');
+        st.style.color = color;
+        st.innerText = msg;
+    }
+
+    function handleFilePick(input) {
+        if (input.files.length > 0) {
+            let file = input.files[0];
+            document.getElementById('filePickText').innerText = "✓ LOADED: " + file.name.toUpperCase();
+            
+            let reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    let data = new Uint8Array(e.target.result);
+                    let workbook = XLSX.read(data, { type: 'array' });
+                    let worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                    rawJsonDataPick = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+                    populatePicklistDropdown(rawJsonDataPick);
+                    document.getElementById('picklistSelect').disabled = false;
+                    document.getElementById('prevPickBtn').disabled = false;
+                    document.getElementById('genPickBtn').disabled = false;
+                    document.getElementById('printPickBtn').disabled = false;
+                    setPickStatus("Pick List Excel loaded successfully!", "#16a34a");
+                } catch (err) {
+                    setPickStatus("Error reading Excel: " + err.message, "#d90429");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    }
+
+    function findValueByKeys(row, keys) {
+        for (let k of Object.keys(row)) {
+            let cleanK = k.toString().trim().toUpperCase();
+            if (keys.some(target => cleanK === target || cleanK.includes(target))) {
+                return row[k];
+            }
+        }
+        return "";
+    }
+
+    function populatePicklistDropdown(data) {
+        let picklistSet = new Set();
+        data.forEach(row => {
+            let val = findValueByKeys(row, ["PICK LIST NO", "PICK_LIST_NO", "PICKLIST", "PL_NO"]);
+            if (val) picklistSet.add(String(val).trim());
+        });
+
+        let select = document.getElementById('picklistSelect');
+        select.innerHTML = '<option value="ALL">-- ALL PICK LISTS --</option>';
+        picklistSet.forEach(pl => {
+            let opt = document.createElement('option');
+            opt.value = pl;
+            opt.innerText = pl;
+            select.appendChild(opt);
+        });
+    }
+
+    function processPickList(actionType = 'download') {
+        if (rawJsonDataPick.length === 0) return;
+        setPickStatus(actionType === 'print' ? "Preparing Print View..." : "PDF Generating...", "#d90429");
+
+        setTimeout(() => {
+            try {
+                let selectedPL = document.getElementById('picklistSelect').value;
+                let viewMode = document.getElementById('viewModeSelect').value;
+                let binSort = document.getElementById('binSortSelect').value;
+
+                let filteredData = rawJsonDataPick.filter(row => {
+                    if (selectedPL === "ALL") return true;
+                    let val = findValueByKeys(row, ["PICK LIST NO", "PICK_LIST_NO", "PICKLIST", "PL_NO"]);
+                    return String(val).trim() === selectedPL;
+                });
+
+                if (filteredData.length === 0) {
+                    setPickStatus("No data found for selected Pick List!", "#d90429");
+                    return;
+                }
+
+                const sortRows = (rows) => {
+                    return rows.sort((a, b) => {
+                        let binA = String(a.binNo).toUpperCase();
+                        let binB = String(b.binNo).toUpperCase();
+                        return binSort === "ASC" 
+                            ? binA.localeCompare(binB, undefined, { numeric: true, sensitivity: 'base' })
+                            : binB.localeCompare(binA, undefined, { numeric: true, sensitivity: 'base' });
+                    });
+                };
+
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+
+                const tableConfig = {
+                    theme: 'grid',
+                    margin: { top: 25, left: 14, right: 14 },
+                    headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', halign: 'center', lineWidth: 0.45, lineColor: [0, 0, 0] },
+                    bodyStyles: { textColor: [0, 0, 0], fontSize: 8, cellPadding: 2.8, halign: 'center', lineWidth: 0.45, lineColor: [0, 0, 0] },
+                    footStyles: { fillColor: [226, 232, 240], textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 9, halign: 'center', lineWidth: 0.45, lineColor: [0, 0, 0] }
+                };
+
+                const renderCleanHeader = (mainTitle, subTitle) => {
+                    doc.setFontSize(13); doc.setFont("helvetica", "bold"); doc.setTextColor(0, 0, 0);
+                    doc.text(mainTitle, 14, 12);
+                    doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(60, 60, 60);
+                    doc.text(subTitle, 14, 17);
+                    try { doc.addImage(qrDataUrl, 'SVG', 180, 7, 14, 14); } catch(e) {}
+                };
+
+                let processedRows = filteredData.map(row => ({
+                    pickListNo: findValueByKeys(row, ["PICK LIST NO", "PICK_LIST_NO", "PICKLIST", "PL_NO"]),
+                    department: findValueByKeys(row, ["DEPARTMENT", "DEPT", "CAT"]),
+                    item: findValueByKeys(row, ["ITEM", "ITEM_NAME", "NAME", "SKU", "ARTICLE CODE", "FSN"]),
+                    color: findValueByKeys(row, ["COLOR", "COLOUR"]),
+                    barcode: findValueByKeys(row, ["BARCODE", "EAN", "UPC"]),
+                    binNo: findValueByKeys(row, ["BIN NO", "BIN_NO", "BIN", "LOCATION"]),
+                    qty: parseFloat(findValueByKeys(row, ["PICK LIST QTY.", "PICK LIST QTY", "QTY", "QUANTITY"]) || 0)
+                }));
+
+                let sortedRows = sortRows(processedRows);
+                let grandTotalQty = sortedRows.reduce((sum, r) => sum + r.qty, 0);
+
+                if (viewMode === "ITEM" || viewMode === "BARCODE") {
+                    let groups = new Map();
+                    sortedRows.forEach(row => {
+                        let itemKey = (viewMode === "ITEM") ? (row.item || "UNKNOWN_ITEM") : (row.barcode || "UNKNOWN_BARCODE");
+                        if (!groups.has(itemKey)) groups.set(itemKey, []);
+                        groups.get(itemKey).push(row);
+                    });
+
+                    let groupKeys = Array.from(groups.keys());
+                    groupKeys.forEach((key, index) => {
+                        if (index > 0) doc.addPage();
+                        let itemRows = groups.get(key);
+                        let groupTotalQty = itemRows.reduce((sum, r) => sum + r.qty, 0);
+
+                        let tableBody = itemRows.map(r => [r.pickListNo || "-", r.department || "-", r.item || "-", r.color || "-", r.barcode || "-", r.binNo || "-", r.qty]);
+                        let tableFoot = [['SUMMARY', '', '', '', `Items: ${itemRows.length}`, 'TOTAL QTY:', groupTotalQty]];
+
+                        doc.autoTable({
+                            startY: 22,
+                            head: [['PICK LIST NO', 'DEPARTMENT', 'ITEM', 'COLOR', 'BARCODE', 'BIN NO', 'QTY']],
+                            body: tableBody,
+                            foot: tableFoot,
+                            ...tableConfig,
+                            didDrawPage: function() {
+                                renderCleanHeader(`PICK LIST REPORT (${selectedPL})`, `${viewMode}: ${key} | Sort: BIN NO ${binSort}`);
+                            }
+                        });
+                    });
+                } else {
+                    let tableBody = sortedRows.map(r => [r.pickListNo || "-", r.department || "-", r.item || "-", r.color || "-", r.barcode || "-", r.binNo || "-", r.qty]);
+                    let tableFoot = [['TOTAL SUMMARY', '', '', '', `Total Items: ${processedRows.length}`, 'TOTAL QTY:', grandTotalQty]];
+
+                    doc.autoTable({
+                        startY: 22,
+                        head: [['PICK LIST NO', 'DEPARTMENT', 'ITEM', 'COLOR', 'BARCODE', 'BIN NO', 'QTY']],
+                        body: tableBody,
+                        foot: tableFoot,
+                        ...tableConfig,
+                        didDrawPage: function() {
+                            renderCleanHeader(`PICK LIST REPORT (${selectedPL})`, `Mode: As Is / Mix | Sort: BIN NO ${binSort}`);
+                        }
+                    });
+                }
+
+                let pdfDataUrl = doc.output('bloburl');
+
+                if (actionType === 'preview') {
+                    document.getElementById('previewContainerPick').style.display = 'block';
+                    document.getElementById('pdfFramePick').src = pdfDataUrl;
+                    setPickStatus("✓ Pick List Preview Loaded!", "#16a34a");
+                } else if (actionType === 'print') {
+                    doc.autoPrint();
+                    window.open(pdfDataUrl, '_blank');
+                    setPickStatus("✓ Print Window Opened!", "#16a34a");
+                } else {
+                    doc.save(`PickList_${selectedPL}_${viewMode}_${Date.now()}.pdf`);
+                    setPickStatus("✓ PDF Downloaded!", "#16a34a");
+                }
+
+            } catch (err) {
+                setPickStatus("Error: Failed to process PDF.", "#d90429");
+            }
+        }, 100);
     }
 </script>
 
