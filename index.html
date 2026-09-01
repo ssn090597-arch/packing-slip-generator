@@ -142,6 +142,34 @@
         .view-section { display: none; }
         .view-section.active { display: block; }
 
+        /* Single File Upload Box */
+        .single-upload-card {
+            background: #ffffff;
+            border: 1.5px dashed #cbd5e1;
+            border-radius: 14px;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        .single-upload-left { display: flex; align-items: center; gap: 14px; }
+        .single-upload-icon {
+            width: 42px; height: 42px; background: #e0e7ff; color: #4338ca;
+            border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;
+        }
+        .single-upload-title { font-size: 13px; font-weight: 700; color: #1e293b; }
+        .single-upload-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+        .btn-single-upload {
+            background: #4338ca; color: #fff; border: none; padding: 10px 18px;
+            border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;
+            display: flex; align-items: center; gap: 8px; transition: 0.2s; white-space: nowrap;
+        }
+        .btn-single-upload:hover { background: #3730a3; }
+
+        .divider-or { text-align: center; font-weight: 800; font-size: 11px; color: #94a3b8; margin: 12px 0; letter-spacing: 0.5px; }
+
         /* B2B Dashboard Cards Grid */
         .cards-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
         .upload-card {
@@ -346,7 +374,7 @@
 </head>
 <body>
 
-<!-- Sidebar Menu -->
+<!-- Sidebar Menu (Cleaned Options) -->
 <div class="sidebar no-print">
     <div>
         <div class="brand-logo">
@@ -363,7 +391,7 @@
             </div>
         </div>
 
-        <!-- Dynamic Navigation Links -->
+        <!-- Clean Navigation Links -->
         <ul class="nav-list">
             <li class="nav-item active" id="nav-dashboard">
                 <button onclick="switchMainView('dashboard')"><i class="fa-solid fa-house"></i> Dashboard</button>
@@ -377,11 +405,6 @@
             <li class="nav-item" id="nav-picklist">
                 <button onclick="switchMainView('picklist')"><i class="fa-solid fa-clipboard-list"></i> Pick List Generator</button>
             </li>
-            <li class="nav-item"><button onclick="switchMainView('dashboard')"><i class="fa-solid fa-file-invoice"></i> Sales Orders</button></li>
-            <li class="nav-item"><button onclick="switchMainView('dashboard')"><i class="fa-solid fa-truck-ramp-box"></i> Challan (Pending)</button></li>
-            <li class="nav-item"><button onclick="switchMainView('dashboard')"><i class="fa-solid fa-chart-line"></i> Sale Report</button></li>
-            <li class="nav-item"><button onclick="switchMainView('dashboard')"><i class="fa-solid fa-gear"></i> Settings</button></li>
-            <li class="nav-item"><button onclick="switchMainView('dashboard')"><i class="fa-solid fa-circle-question"></i> Help & Support</button></li>
         </ul>
     </div>
 
@@ -420,7 +443,27 @@
 
     <!-- VIEW 1: B2B Order Analysis Dashboard -->
     <div id="viewDashboard" class="view-section active">
-        <!-- 4 Upload Cards -->
+        
+        <!-- OPTION 1: Single Master File Upload Bar -->
+        <div class="single-upload-card">
+            <div class="single-upload-left">
+                <div class="single-upload-icon"><i class="fa-solid fa-file-excel"></i></div>
+                <div>
+                    <div class="single-upload-title">Option 1: Upload Single Master Excel File (4 Sheets)</div>
+                    <div class="single-upload-sub">Contains: Sales Order, B2B PO, Delivery Challan, & Sale Report Item Wise</div>
+                </div>
+            </div>
+            <div>
+                <input type="file" id="fileSingleMaster" accept=".xlsx, .xls" style="display:none" onchange="loadSingleMasterFile(event)">
+                <button class="btn-single-upload" onclick="document.getElementById('fileSingleMaster').click()">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Select Single File
+                </button>
+            </div>
+        </div>
+
+        <div class="divider-or">--- OR (OPTION 2: UPLOAD 4 SEPARATE FILES) ---</div>
+
+        <!-- OPTION 2: 4 Upload Cards -->
         <div class="cards-grid">
             <div class="upload-card c1" onclick="document.getElementById('fileSalesOrder').click()">
                 <span class="card-num">01</span>
@@ -499,7 +542,7 @@
                     <i class="fa-solid fa-file-excel" style="font-size:18px;"></i>
                     <div>
                         <div>Export Matched Excel Report</div>
-                        <div style="font-size:9px; opacity:0.8;">Download Excel Report</div>
+                        <div style="font-size:9px; opacity:0.8;">Download Excel Report with Invoice Number</div>
                     </div>
                 </button>
                 <button class="btn-main btn-print" onclick="window.print()">
@@ -685,7 +728,7 @@
     }
 
     /* ==========================================================
-       SECTION 1: B2B Order Analysis Engine & Order Wise Linkage
+       SECTION 1: B2B Order Analysis Engine (Dual Upload & Invoice Mapping)
        ========================================================== */
     let datasets = { sales: [], po: [], poBarCode: '', challan: [], saleItem: [] };
     let globalMergedData = [];
@@ -693,6 +736,7 @@
     let salesOrderLookup = {};
     let salesOrderReqQty = {};
     let rateLookup = {};
+    let invoiceLookup = {};
 
     function cleanKey(val) {
         if (!val) return '';
@@ -704,7 +748,7 @@
         if (!row) return '';
         for (let key in row) {
             let cleanHeader = key.toLowerCase().replace(/[^a-z0-9]/g, '');
-            if (cleanHeader === 'saleorderno' || cleanHeader === 'salesorderno' || cleanHeader === 'orderno' || cleanHeader === 'docno' || cleanHeader === 'challanno') {
+            if (cleanHeader === 'saleorderno' || cleanHeader === 'salesorderno' || cleanHeader === 'orderno' || cleanHeader === 'docno' || cleanHeader === 'challanno' || cleanHeader === 'referenceno') {
                 return String(row[key] || '').trim();
             }
         }
@@ -748,7 +792,7 @@
         let headerIdx = 0;
         for (let i = 0; i < Math.min(rawJson.length, 15); i++) {
             let rowStr = rawJson[i].map(c => String(c)).join(' ');
-            if (rowStr.includes('BARCODE') || rowStr.includes('Order No') || rowStr.includes('Sale Order') || rowStr.includes('REMARKS') || rowStr.includes('Customer Name')) {
+            if (rowStr.includes('BARCODE') || rowStr.includes('Order No') || rowStr.includes('Sale Order') || rowStr.includes('REMARKS') || rowStr.includes('Customer Name') || rowStr.includes('Invoice Number')) {
                 headerIdx = i;
                 break;
             }
@@ -767,6 +811,50 @@
         return result;
     }
 
+    // Single Master File Loader (4 Sheets in 1 File)
+    function loadSingleMasterFile(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        document.getElementById('loadingOverlay').style.display = 'block';
+
+        setTimeout(() => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+
+                workbook.SheetNames.forEach(sheetName => {
+                    const sheet = workbook.Sheets[sheetName];
+                    const lowerName = sheetName.toLowerCase();
+
+                    if (lowerName.includes('sales order') || lowerName.includes('order')) {
+                        datasets.sales = parseSheetSmartly(sheet);
+                        document.getElementById('msg-sales').innerText = "✓ Sheet Loaded";
+                        document.getElementById('msg-sales').classList.add('loaded');
+                    } else if (lowerName.includes('b2b') || lowerName.includes('po')) {
+                        datasets.po = parsePOFile(sheet);
+                        document.getElementById('msg-po').innerText = "✓ Sheet Loaded";
+                        document.getElementById('msg-po').classList.add('loaded');
+                    } else if (lowerName.includes('challan') || lowerName.includes('pending')) {
+                        datasets.challan = parseSheetSmartly(sheet);
+                        document.getElementById('msg-challan').innerText = "✓ Sheet Loaded";
+                        document.getElementById('msg-challan').classList.add('loaded');
+                    } else if (lowerName.includes('sale report') || lowerName.includes('item wise')) {
+                        datasets.saleItem = parseSheetSmartly(sheet);
+                        document.getElementById('msg-saleItem').innerText = "✓ Sheet Loaded";
+                        document.getElementById('msg-saleItem').classList.add('loaded');
+                    }
+                });
+
+                document.getElementById('loadingOverlay').style.display = 'none';
+                processAllData();
+            };
+            reader.readAsArrayBuffer(file);
+        }, 50);
+    }
+
+    // Individual File Loader (4 Separate Files)
     function loadIndividualFile(event, type) {
         const file = event.target.files[0];
         if (!file) return;
@@ -800,7 +888,9 @@
         salesOrderLookup = {};
         salesOrderReqQty = {};
         rateLookup = {};
+        invoiceLookup = {};
 
+        // Extract Gross Amount and Invoice Numbers from Sale Report Item Wise
         if (datasets.saleItem.length > 0) {
             datasets.saleItem.forEach(row => {
                 let code = cleanKey(row['BARCODE'] || row['Barcode'] || row['ITEM CODE'] || '');
@@ -808,6 +898,14 @@
                 let saleQty = parseFloat(row['SALE QTY'] || row['Sale Qty'] || 1);
                 if (code) {
                     rateLookup[code] = (saleQty > 0 && grossAmt > 0) ? (grossAmt / saleQty) : 0;
+                }
+
+                let ordNo = extractOrderNo(row);
+                let invNo = row['Invoice Number'] || row['Invoice No'] || row['Inv No'] || row['INVOICE_NUMBER'] || '';
+                if (ordNo && invNo) {
+                    invoiceLookup[ordNo] = invNo;
+                } else if (!invoiceLookup['DEFAULT'] && invNo) {
+                    invoiceLookup['DEFAULT'] = invNo;
                 }
             });
         }
@@ -860,7 +958,6 @@
         let finalRows = [];
         let sourceRows = datasets.challan.length > 0 ? datasets.challan : datasets.po;
 
-        // ORDER-WISE FILTER AUTOMATION: Filter Delivery Challan data by selected Order No if applicable
         if (selectedOrder && datasets.challan.length > 0) {
             let filteredChallan = datasets.challan.filter(r => {
                 let rowOrd = extractOrderNo(r);
@@ -883,7 +980,9 @@
             packedChallanQty += qty;
 
             let boxNum = row['REMARKS'] || row['box nu'] || '1';
-            let invoiceNo = row['Invoice Number'] || '-';
+            
+            // Map Invoice Number from Sale Report Item Wise
+            let invoiceNo = row['Invoice Number'] || row['Invoice No'] || invoiceLookup[selectedOrder] || invoiceLookup['DEFAULT'] || '-';
 
             let cleanEan = cleanKey(eanCode);
             let cleanItemCode = cleanKey(itemCode);
@@ -971,7 +1070,7 @@
                     <td>${item.mrp}</td>
                     <td>${typeof item.rate === 'number' ? item.rate.toFixed(3) : item.rate}</td>
                     <td>${item.boxNum}</td>
-                    <td>${item.invoiceNo}</td>
+                    <td style="color:#e11d48; font-weight:700;">${item.invoiceNo}</td>
                 </tr>
             `;
         }
@@ -1079,7 +1178,7 @@
     }
 
     /* ==========================================================
-       SECTION 2: Smart Box Label Studio Engine (Unchanged Original)
+       SECTION 2: Smart Box Label Studio Engine
        ========================================================== */
     let rawSheetRowsLabel = [];
 
