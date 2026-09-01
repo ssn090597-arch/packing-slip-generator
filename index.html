@@ -158,6 +158,7 @@
             flex-direction: column;
             align-items: center;
             text-align: center;
+            cursor: pointer;
         }
         .card-num { position: absolute; top: 12px; right: 16px; font-size: 20px; font-weight: 800; color: #0f172a; opacity: 0.8; }
         .card-icon { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 10px; color: #fff; }
@@ -188,7 +189,8 @@
         .c3 .btn-upload { background: #f97316; }
         .c4 .btn-upload { background: #8b5cf6; }
 
-        .file-status { margin-top: 10px; font-size: 10px; font-weight: 700; color: #10b981; word-break: break-all; }
+        .file-status { margin-top: 10px; font-size: 10px; font-weight: 700; color: #94a3b8; word-break: break-all; }
+        .file-status.loaded { color: #10b981; }
 
         /* Filter Panel */
         .filter-section {
@@ -255,7 +257,7 @@
         .btn-print { background: #0f172a; }
 
         /* Table Styling */
-        .table-card { background: #fff; border-radius: 8px; border: 1px solid #000; overflow: hidden; }
+        .table-card { background: #fff; border-radius: 8px; border: 1px solid #000; overflow: hidden; min-height: 100px; }
         .excel-table { width: 100%; border-collapse: collapse; font-size: 10px; text-align: center; }
         .excel-table th, .excel-table td { border: 1px solid #000; padding: 6px; font-weight: 600; }
         
@@ -272,6 +274,7 @@
         }
 
         .loading-overlay { display: none; text-align: center; font-weight: 700; color: var(--primary-red); padding: 8px; }
+        .empty-table-msg { text-align: center; padding: 40px; color: var(--text-muted); font-size: 13px; font-weight: 600; }
 
         .slips-wrapper { display: none; }
         @media print {
@@ -302,7 +305,7 @@
         <ul class="nav-list">
             <li class="nav-item active"><a href="#"><i class="fa-solid fa-house"></i> Dashboard</a></li>
             <li class="nav-item"><a href="#"><i class="fa-solid fa-file-invoice"></i> Sales Orders</a></li>
-            <li class="nav-item"><a href="#"><i class="fa-solid fa-clipboard-list"></i> Myntra PO</a></li>
+            <li class="nav-item"><a href="#"><i class="fa-solid fa-clipboard-list"></i> B2B PO File</a></li>
             <li class="nav-item"><a href="#"><i class="fa-solid fa-truck-ramp-box"></i> Challan (Pending)</a></li>
             <li class="nav-item"><a href="#"><i class="fa-solid fa-chart-line"></i> Sale Report</a></li>
             <li class="nav-item"><a href="#"><i class="fa-solid fa-folder-open"></i> Reports</a></li>
@@ -338,11 +341,11 @@
             <div class="header-widgets">
                 <div class="date-badge">
                     <i class="fa-regular fa-calendar-days"></i>
-                    <span id="currentDateDisplay">29 August 2026 | 01:41 PM</span>
+                    <span id="currentDateDisplay">-- -- ---- | --:-- --</span>
                 </div>
                 <button class="notif-btn">
                     <i class="fa-regular fa-bell"></i>
-                    <span class="notif-badge">3</span>
+                    <span class="notif-badge">0</span>
                 </button>
             </div>
         </div>
@@ -355,16 +358,16 @@
                 <div class="card-title">Sales Order Wise Report</div>
                 <button class="btn-upload"><i class="fa-solid fa-folder-open"></i> Select File</button>
                 <input type="file" id="fileSalesOrder" accept=".xlsx, .xls, .csv" style="display:none" onchange="loadIndividualFile(event, 'sales')">
-                <div id="msg-sales" class="file-status">✓ Loaded: Sales Order Wise Report.xlsx</div>
+                <div id="msg-sales" class="file-status">No file uploaded</div>
             </div>
 
             <div class="upload-card c2" onclick="document.getElementById('filePO').click()">
                 <span class="card-num">02</span>
                 <div class="card-icon"><i class="fa-solid fa-clipboard-check"></i></div>
-                <div class="card-title">Myntra PO File</div>
+                <div class="card-title">B2B PO File</div>
                 <button class="btn-upload"><i class="fa-solid fa-folder-open"></i> Select File</button>
                 <input type="file" id="filePO" accept=".xlsx, .xls, .csv" style="display:none" onchange="loadIndividualFile(event, 'po')">
-                <div id="msg-po" class="file-status">✓ Loaded: PO-MYNJ-SAPL210826-4 (1).xlsx</div>
+                <div id="msg-po" class="file-status">No file uploaded</div>
             </div>
 
             <div class="upload-card c3" onclick="document.getElementById('fileChallan').click()">
@@ -373,7 +376,7 @@
                 <div class="card-title">Delivery Challan (Pending Box)</div>
                 <button class="btn-upload"><i class="fa-solid fa-folder-open"></i> Select File</button>
                 <input type="file" id="fileChallan" accept=".xlsx, .xls, .csv" style="display:none" onchange="loadIndividualFile(event, 'challan')">
-                <div id="msg-challan" class="file-status">✓ Loaded: Book1.xlsx</div>
+                <div id="msg-challan" class="file-status">No file uploaded</div>
             </div>
 
             <div class="upload-card c4" onclick="document.getElementById('fileSaleItem').click()">
@@ -382,7 +385,7 @@
                 <div class="card-title">Sale Report Item Wise</div>
                 <button class="btn-upload"><i class="fa-solid fa-folder-open"></i> Select File</button>
                 <input type="file" id="fileSaleItem" accept=".xlsx, .xls, .csv" style="display:none" onchange="loadIndividualFile(event, 'saleItem')">
-                <div id="msg-saleItem" class="file-status">✓ Loaded: Book2.xlsx</div>
+                <div id="msg-saleItem" class="file-status">No file uploaded</div>
             </div>
         </div>
 
@@ -393,12 +396,12 @@
             <div class="filter-row">
                 <div class="form-group">
                     <label><i class="fa-solid fa-location-dot" style="color:var(--primary-red);"></i> Destination Name (Auto)</label>
-                    <input type="text" id="destInput" class="form-control" value="MYNTRA JABONG INDIA PVT LTD (BHIWANDI, THANE)" readonly>
+                    <input type="text" id="destInput" class="form-control" value="" placeholder="Destination will auto-populate" readonly>
                 </div>
                 <div class="form-group">
                     <label><i class="fa-solid fa-list-check" style="color:var(--primary-red);"></i> Select Order Number</label>
                     <select id="orderSelect" class="form-control" onchange="onOrderSelected()">
-                        <option value="">SMTS000340/26-27</option>
+                        <option value="">-- Select Order --</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -412,12 +415,12 @@
 
             <div id="statusBadge" class="status-banner">
                 <div class="status-left">
-                    <i class="fa-solid fa-triangle-exclamation"></i>
-                    <span>ORDER IS PENDING</span>
-                    <span id="remQtyBadge" class="status-badge-num">955 Qty Remaining</span>
+                    <i class="fa-solid fa-info-circle"></i>
+                    <span id="statusTitle">NO ORDER SELECTED</span>
+                    <span id="remQtyBadge" class="status-badge-num">0 Qty Remaining</span>
                 </div>
                 <div id="statusQty" class="status-right">
-                    Required Order Qty: 955 &nbsp;|&nbsp; Packed Challan Qty: 0
+                    Required Order Qty: 0 &nbsp;|&nbsp; Packed Challan Qty: 0
                 </div>
             </div>
 
@@ -439,7 +442,9 @@
             </div>
         </div>
 
-        <div id="summaryTableContainer" class="table-card"></div>
+        <div id="summaryTableContainer" class="table-card">
+            <div class="empty-table-msg">📁 Please upload files above to display and analyze order data.</div>
+        </div>
     </div>
 
     <div class="bottom-footer no-print">
@@ -450,6 +455,15 @@
 </div>
 
 <script>
+    // Live Date & Time Tracker
+    function updateLiveDateTime() {
+        const now = new Date();
+        const options = { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
+        document.getElementById('currentDateDisplay').innerText = now.toLocaleString('en-GB', options).replace(',', ' |');
+    }
+    updateLiveDateTime();
+    setInterval(updateLiveDateTime, 60000);
+
     let datasets = { sales: [], po: [], poBarCode: '', challan: [], saleItem: [] };
     let globalMergedData = [];
     let currentDisplayedData = [];
@@ -488,7 +502,7 @@
                 headerIdx = i;
             }
         }
-        datasets.poBarCode = poBarcode || 'MYNJ-SAPL210826-4';
+        datasets.poBarCode = poBarcode || '';
         if (headerIdx === -1) headerIdx = 0;
 
         let headers = rawJson[headerIdx].map(h => String(h).trim());
@@ -535,7 +549,9 @@
         if (!file) return;
 
         document.getElementById('loadingOverlay').style.display = 'block';
-        document.getElementById('msg-' + type).innerText = '✓ Loaded: ' + file.name;
+        let msgElem = document.getElementById('msg-' + type);
+        msgElem.innerText = '✓ Loaded: ' + file.name;
+        msgElem.classList.add('loaded');
 
         setTimeout(() => {
             const reader = new FileReader();
@@ -575,7 +591,7 @@
         }
 
         let orderSelect = document.getElementById('orderSelect');
-        let orderOptionsHtml = '';
+        let orderOptionsHtml = '<option value="">-- Select Order --</option>';
         let uniqueOrdersSet = new Set();
 
         if (datasets.sales.length > 0) {
@@ -606,6 +622,8 @@
         
         if (selectedOrder && salesOrderLookup[selectedOrder]) {
             document.getElementById('destInput').value = salesOrderLookup[selectedOrder];
+        } else if (!selectedOrder) {
+            document.getElementById('destInput').value = "";
         }
 
         let poLookup = {};
@@ -635,7 +653,7 @@
             packedChallanQty += qty;
 
             let boxNum = row['REMARKS'] || row['box nu'] || '1';
-            let invoiceNo = row['Invoice Number'] || 'SMTS26-27-000298';
+            let invoiceNo = row['Invoice Number'] || '-';
 
             let cleanEan = cleanKey(eanCode);
             let cleanItemCode = cleanKey(itemCode);
@@ -674,16 +692,30 @@
     }
 
     function updatePackingStatus(selectedOrder, packedQty) {
-        let targetQty = salesOrderReqQty[selectedOrder] || 955;
+        let targetQty = salesOrderReqQty[selectedOrder] || 0;
         let rem = targetQty - packedQty;
 
-        document.getElementById('statusQty').innerText = `Required Order Qty: ${targetQty}  |  Packed Challan Qty: ${packedQty}`;
-        document.getElementById('remQtyBadge').innerText = `${rem > 0 ? rem : 0} Qty Remaining`;
+        if(!selectedOrder) {
+            document.getElementById('statusTitle').innerText = "NO ORDER SELECTED";
+            document.getElementById('statusQty').innerText = `Required Order Qty: 0  |  Packed Challan Qty: ${packedQty}`;
+            document.getElementById('remQtyBadge').innerText = `0 Qty Remaining`;
+        } else {
+            document.getElementById('statusTitle').innerText = rem > 0 ? "ORDER IS PENDING" : "ORDER COMPLETED";
+            document.getElementById('statusQty').innerText = `Required Order Qty: ${targetQty}  |  Packed Challan Qty: ${packedQty}`;
+            document.getElementById('remQtyBadge').innerText = `${rem > 0 ? rem : 0} Qty Remaining`;
+        }
     }
 
     function renderSummaryTable(data) {
-        let poDisplay = datasets.poBarCode || 'MYNJ-SAPL210826-4';
-        let destName = document.getElementById('destInput').value || 'MYNTRA JABONG INDIA PVT LTD (BHIWANDI, THANE)';
+        if(data.length === 0) {
+            document.getElementById('summaryTableContainer').innerHTML = `
+                <div class="empty-table-msg">📁 Please upload files above to display and analyze order data.</div>
+            `;
+            return;
+        }
+
+        let poDisplay = datasets.poBarCode || '-';
+        let destName = document.getElementById('destInput').value || '-';
         let totalQty = data.reduce((sum, item) => sum + item.qty, 0);
 
         let rowsHtml = '';
@@ -759,13 +791,16 @@
     }
 
     async function exportExactStyledExcel() {
-        if (currentDisplayedData.length === 0) return;
+        if (currentDisplayedData.length === 0) {
+            alert("No data available to export! Please upload files first.");
+            return;
+        }
 
         const workbook = new ExcelJS.Workbook();
         const worksheet = workbook.addWorksheet('Matched Report');
 
-        let poDisplay = datasets.poBarCode || 'MYNJ-SAPL210826-4';
-        let destName = document.getElementById('destInput').value;
+        let poDisplay = datasets.poBarCode || 'PO_REPORT';
+        let destName = document.getElementById('destInput').value || 'DESTINATION';
 
         worksheet.columns = [
             { width: 24 }, { width: 14 }, { width: 14 }, { width: 18 },
@@ -809,6 +844,10 @@
     }
 
     function prepareAndPrintSlips() {
+        if(currentDisplayedData.length === 0) {
+            alert("No data available to print!");
+            return;
+        }
         window.print();
     }
 </script>
