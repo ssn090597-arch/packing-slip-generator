@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>B2B Order Analysis & Custom Excel Generator</title>
     
-    <!-- Google Fonts & Font Awesome Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- XLSX, ExcelJS & FileSaver Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -341,7 +339,7 @@
             <div class="header-widgets">
                 <div class="date-badge">
                     <i class="fa-regular fa-calendar-days"></i>
-                    <span id="currentDateDisplay">-- -- ---- | --:-- --</span>
+                    <span id="currentDateDisplay">-- -- ---- | --:--:-- --</span>
                 </div>
                 <button class="notif-btn">
                     <i class="fa-regular fa-bell"></i>
@@ -350,7 +348,6 @@
             </div>
         </div>
 
-        <!-- 4 Upload Cards -->
         <div class="cards-grid">
             <div class="upload-card c1" onclick="document.getElementById('fileSalesOrder').click()">
                 <span class="card-num">01</span>
@@ -391,7 +388,6 @@
 
         <div id="loadingOverlay" class="loading-overlay">⏳ Processing Data... Please wait.</div>
 
-        <!-- Quick Filters -->
         <div class="filter-section">
             <div class="filter-row">
                 <div class="form-group">
@@ -455,14 +451,20 @@
 </div>
 
 <script>
-    // Live Date & Time Tracker
+    // Precise Real-Time Live Date & Time Tracker
     function updateLiveDateTime() {
         const now = new Date();
-        const options = { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
-        document.getElementById('currentDateDisplay').innerText = now.toLocaleString('en-GB', options).replace(',', ' |');
+        const optionsDate = { day: '2-digit', month: 'short', year: 'numeric' };
+        const optionsTime = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true };
+        
+        const formattedDate = now.toLocaleDateString('en-GB', optionsDate);
+        const formattedTime = now.toLocaleTimeString('en-US', optionsTime);
+
+        document.getElementById('currentDateDisplay').innerText = `${formattedDate} | ${formattedTime}`;
     }
+    
     updateLiveDateTime();
-    setInterval(updateLiveDateTime, 60000);
+    setInterval(updateLiveDateTime, 1000); // 1-second interval ensures real-time ticking
 
     let datasets = { sales: [], po: [], poBarCode: '', challan: [], saleItem: [] };
     let globalMergedData = [];
